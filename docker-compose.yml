@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "5173:5173"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=5173
+      - COLMAP_EXE_PATH=colmap
+    volumes:
+      - ./data:/app/data
+      - ./jobs:/app/jobs
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
