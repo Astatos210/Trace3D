@@ -4,9 +4,11 @@ __pycache__/
 *$py.class
 *.so
 .Python
+
 env/
 venv/
 .venv/
+
 build/
 develop-eggs/
 dist/
@@ -22,35 +24,46 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+
 .pytest_cache/
 
 # Node / Frontend
+node_modules/
 frontend/node_modules/
+
+dist/
+build/
 frontend/dist/
-frontend/.env.local
+
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Portable COLMAP install (download via tools/setup_colmap.ps1)
+# Frontend local environment files
+.env
+.env.*
+!.env.example
+
+# Portable COLMAP install
 tools/colmap/
 
-# Job runs and data (keep directories, ignore large artifacts)
+# Job outputs and large generated data
 jobs/*/sparse/
 jobs/*/dense/
 jobs/*/frames/*.jpg
 jobs/*/frames/*.png
 jobs/*/*.ply
 jobs/*/*.glb
+
+# Uploaded videos and generated data
 data/uploads/*
 !data/uploads/.gitkeep
+
 data/samples/*
 !data/samples/.gitkeep
-!data/samples/sample_drone.mp4
 
-# Environment
-.env
-.env.local
+# Keep this only if you intentionally want this sample video in GitHub
+!data/samples/sample_drone.mp4
 
 # IDE
 .vscode/
