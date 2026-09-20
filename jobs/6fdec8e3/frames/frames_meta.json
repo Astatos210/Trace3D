@@ -1,0 +1,146 @@
+{
+  "video_path": "G:\\Coding\\Projects\\3D_drone\\data\\uploads\\upload_d72825e3_sample_drone.mp4",
+  "duration_sec": 6.0,
+  "native_fps": 20.0,
+  "total_video_frames": 120,
+  "sample_fps": 2.0,
+  "blur_threshold": 100.0,
+  "width": 640,
+  "height": 480,
+  "extracted_sharp_count": 12,
+  "rejected_blurry_count": 0,
+  "frames": [
+    {
+      "frame_index": 0,
+      "saved_index": 0,
+      "timestamp_sec": 0.0,
+      "blur_score": 1791.67,
+      "blur_threshold": 100.0,
+      "is_sharp": true,
+      "filename": "frame_00000.jpg",
+      "width": 640,
+      "height": 480
+    },
+    {
+      "frame_index": 10,
+      "saved_index": 1,
+      "timestamp_sec": 0.5,
+      "blur_score": 1835.28,
+      "blur_threshold": 100.0,
+      "is_sharp": true,
+      "filename": "frame_00001.jpg",
+      "width": 640,
+      "height": 480
+    },
+    {
+      "frame_index": 20,
+      "saved_index": 2,
+      "timestamp_sec": 1.0,
+      "blur_score": 1876.81,
+      "blur_threshold": 100.0,
+      "is_sharp": true,
+      "filename": "frame_00002.jpg",
+      "width": 640,
+      "height": 480
+    },
+    {
+      "frame_index": 30,
+      "saved_index": 3,
+      "timestamp_sec": 1.5,
+      "blur_score": 1885.14,
+      "blur_threshold": 100.0,
+      "is_sharp": true,
+      "filename": "frame_00003.jpg",
+      "width": 640,
+      "height": 480
+    },
+    {
+      "frame_index": 40,
+      "saved_index": 4,
+      "timestamp_sec": 2.0,
+      "blur_score": 1877.3,
+      "blur_threshold": 100.0,
+      "is_sharp": true,
+      "filename": "frame_00004.jpg",
+      "width": 640,
+      "height": 480
+    },
+    {
+      "frame_index": 50,
+      "saved_index": 5,
+      "timestamp_sec": 2.5,
+      "blur_score": 1881.5,
+      "blur_threshold": 100.0,
+      "is_sharp": true,
+      "filename": "frame_00005.jpg",
+      "width": 640,
+      "height": 480
+    },
+    {
+      "frame_index": 60,
+      "saved_index": 6,
+      "timestamp_sec": 3.0,
+      "blur_score": 1886.79,
+      "blur_threshold": 100.0,
+      "is_sharp": true,
+      "filename": "frame_00006.jpg",
+      "width": 640,
+      "height": 480
+    },
+    {
+      "frame_index": 70,
+      "saved_index": 7,
+      "timestamp_sec": 3.5,
+      "blur_score": 1881.86,
+      "blur_threshold": 100.0,
+      "is_sharp": true,
+      "filename": "frame_00007.jpg",
+      "width": 640,
+      "height": 480
+    },
+    {
+      "frame_index": 80,
+      "saved_index": 8,
+      "timestamp_sec": 4.0,
+      "blur_score": 1880.28,
+      "blur_threshold": 100.0,
+      "is_sharp": true,
+      "filename": "frame_00008.jpg",
+      "width": 640,
+      "height": 480
+    },
+    {
+      "frame_index": 90,
+      "saved_index": 9,
+      "timestamp_sec": 4.5,
+      "blur_score": 1882.71,
+      "blur_threshold": 100.0,
+      "is_sharp": true,
+      "filename": "frame_00009.jpg",
+      "width": 640,
+      "height": 480
+    },
+    {
+      "frame_index": 100,
+      "saved_index": 10,
+      "timestamp_sec": 5.0,
+      "blur_score": 1877.65,
+      "blur_threshold": 100.0,
+      "is_sharp": true,
+      "filename": "frame_00010.jpg",
+      "width": 640,
+      "height": 480
+    },
+    {
+      "frame_index": 110,
+      "saved_index": 11,
+      "timestamp_sec": 5.5,
+      "blur_score": 1868.84,
+      "blur_threshold": 100.0,
+      "is_sharp": true,
+      "filename": "frame_00011.jpg",
+      "width": 640,
+      "height": 480
+    }
+  ]
+}

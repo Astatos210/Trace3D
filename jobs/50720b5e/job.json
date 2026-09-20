@@ -1,0 +1,27 @@
+{
+  "id": "50720b5e",
+  "created_at": 1789809965.3514738,
+  "status": "FAILED",
+  "stage": "FAILED",
+  "progress": 30,
+  "video_path": "G:\\Coding\\Projects\\3D_drone\\data\\samples\\sample_drone.mp4",
+  "job_dir": "G:\\Coding\\Projects\\3D_drone\\jobs\\50720b5e",
+  "sample_fps": 2.0,
+  "blur_threshold": 50.0,
+  "voxel_size": 0.05,
+  "mock_mode": false,
+  "registered_images": 0,
+  "point_count": 0,
+  "mesh_triangle_count": 0,
+  "scale_factor": 1.0,
+  "logs": [
+    "Job queued.",
+    "[14:56:05] Extracting frames at 2.0 FPS with blur threshold 50.0...",
+    "[14:56:05] Extracted 12 sharp frames (0 blurry frames rejected).",
+    "[14:56:05] Running feature extraction and sparse structure-from-motion...",
+    "[14:56:05] COLMAP Error: COLMAP executable was not found on PATH or via COLMAP_EXE_PATH.\nPlease install COLMAP (e.g., via winget install COLMAP.COLMAP, or download from https://github.com/colmap/colmap/releases), or set COLMAP_EXE_PATH in .env.\nTo preview the frontend UI without COLMAP, enable Mock Mode."
+  ],
+  "error": "COLMAP executable was not found on PATH or via COLMAP_EXE_PATH.\nPlease install COLMAP (e.g., via winget install COLMAP.COLMAP, or download from https://github.com/colmap/colmap/releases), or set COLMAP_EXE_PATH in .env.\nTo preview the frontend UI without COLMAP, enable Mock Mode.",
+  "outputs": {},
+  "metrics": {}
+}

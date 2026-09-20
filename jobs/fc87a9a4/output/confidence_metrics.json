@@ -1,0 +1,15 @@
+{
+  "total_points": 336,
+  "high_confidence_count": 146,
+  "medium_confidence_count": 128,
+  "low_confidence_inferred_count": 62,
+  "high_confidence_pct": 43.45,
+  "medium_confidence_pct": 38.1,
+  "low_confidence_inferred_pct": 18.45,
+  "confidence_file": "G:\\Coding\\Projects\\3D_drone\\jobs\\fc87a9a4\\output\\confidence_pcd.ply",
+  "legend": {
+    "green": "High Confidence (\u2265 0.8): Multi-view stereo validated",
+    "yellow": "Medium Confidence (0.4 - 0.8): Sparse visual support",
+    "orange_red": "Low/Inferred Confidence (< 0.4): Monocular depth fill-in"
+  }
+}

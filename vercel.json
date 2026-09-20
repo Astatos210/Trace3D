@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://YOUR-SPACE.hf.space/api/:path*" },
+    { "source": "/jobs/:path*", "destination": "https://YOUR-SPACE.hf.space/jobs/:path*" },
+    { "source": "/data/:path*", "destination": "https://YOUR-SPACE.hf.space/data/:path*" }
+  ]
+}

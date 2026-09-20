@@ -1,0 +1,26 @@
+{
+  "id": "35b0b95e",
+  "created_at": 1789816164.8988554,
+  "status": "FAILED",
+  "stage": "FAILED",
+  "progress": 25,
+  "video_path": "G:\\Coding\\Projects\\3D_drone\\data\\uploads\\upload_61a182b3_Video_1.mp4",
+  "job_dir": "G:\\Coding\\Projects\\3D_drone\\jobs\\35b0b95e",
+  "sample_fps": 3.0,
+  "blur_threshold": 100.0,
+  "voxel_size": 0.05,
+  "mock_mode": true,
+  "registered_images": 0,
+  "point_count": 0,
+  "mesh_triangle_count": 0,
+  "scale_factor": 1.0,
+  "logs": [
+    "Job queued.",
+    "[16:39:24] Extracting frames at 3.0 FPS with blur threshold 100.0...",
+    "[16:39:27] Extracted 0 sharp frames (19 blurry frames rejected).",
+    "[16:39:27] Fatal Error: Too few sharp frames extracted (0 < 3). Cannot perform 3D reconstruction. Lower the blur threshold or provide a longer video."
+  ],
+  "error": "Too few sharp frames extracted (0 < 3). Cannot perform 3D reconstruction. Lower the blur threshold or provide a longer video.",
+  "outputs": {},
+  "metrics": {}
+}

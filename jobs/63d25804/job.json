@@ -1,0 +1,129 @@
+{
+  "id": "63d25804",
+  "created_at": 1789894426.3254828,
+  "status": "COMPLETED",
+  "stage": "COMPLETED",
+  "progress": 100,
+  "video_path": "G:\\Coding\\Projects\\3D_drone\\data\\samples\\sample_drone.mp4",
+  "job_dir": "G:\\Coding\\Projects\\3D_drone\\jobs\\63d25804",
+  "sample_fps": 2.0,
+  "blur_threshold": 100.0,
+  "voxel_size": 0.05,
+  "mock_mode": false,
+  "registered_images": 16,
+  "point_count": 265,
+  "mesh_triangle_count": 0,
+  "scale_factor": 1.417054,
+  "logs": [
+    "Job queued.",
+    "[14:23:46] Extracting frames at 2.0 FPS with blur threshold 100.0...",
+    "[14:23:47] Extracted 16 sharp frames (0 blurry frames rejected).",
+    "[14:23:47] Running feature extraction and sparse structure-from-motion...",
+    "[14:23:56] Sparse reconstruction finished: 16 cameras registered.",
+    "[14:23:56] Running PatchMatch stereo and multi-view stereo fusion...",
+    "[14:23:57] Dense MVS was skipped: COLMAP dense stereo requires an NVIDIA GPU (CUDA), which is unavailable. Output is built from the verified sparse reconstruction instead.",
+    "[14:23:57] Applying Open3D statistical outlier removal, voxel downsampling, and meshing...",
+    "[14:23:57] Open3D processing finished: 265 points, 0 triangles.",
+    "[14:23:57] Evaluating multi-view geometric confidence and monocular fill...",
+    "[14:23:57] Confidence evaluated: 56.23% high confidence points.",
+    "[14:23:57] Pipeline finished successfully!",
+    "[14:25:04] Applied metric calibration (gps): scale=1.2446.",
+    "[14:25:06] Applied metric calibration (gps): scale=1.2446.",
+    "[14:25:18] Applied metric calibration (gps): scale=1.4107.",
+    "[14:25:19] Applied metric calibration (gps): scale=1.4107.",
+    "[14:25:20] Applied metric calibration (gps): scale=1.4107.",
+    "[14:25:20] Applied metric calibration (gps): scale=1.4107.",
+    "[14:26:12] Applied metric calibration (gps): scale=1.4171.",
+    "[14:28:22] Applied metric calibration (gps): scale=1.4171.",
+    "[14:28:24] Applied metric calibration (gps): scale=1.4171."
+  ],
+  "error": null,
+  "outputs": {
+    "frames_meta": "/jobs/63d25804/frames/frames_meta.json",
+    "sparse_ply": "/jobs/63d25804/reconstruction/sparse_points.ply",
+    "dense_ply": "/jobs/63d25804/output/point_cloud.ply",
+    "mesh_ply": null,
+    "mesh_glb": null,
+    "confidence_ply": "/jobs/63d25804/output/confidence_pcd.ply",
+    "metrics_json": "/jobs/63d25804/output/metrics.json"
+  },
+  "metrics": {
+    "job_id": "63d25804",
+    "is_mock": false,
+    "dense_mode": "sparse_fallback",
+    "dense_notice": "Dense MVS was skipped: COLMAP dense stereo requires an NVIDIA GPU (CUDA), which is unavailable. Output is built from the verified sparse reconstruction instead.",
+    "registered_images": 16,
+    "total_frames_extracted": 16,
+    "blurry_frames_rejected": 0,
+    "point_count": 265,
+    "mesh_triangle_count": 0,
+    "bounding_box": {
+      "min": [
+        -16.352,
+        -16.629,
+        0.24
+      ],
+      "max": [
+        26.247,
+        14.479,
+        46.766
+      ],
+      "extent": [
+        42.599,
+        31.108,
+        46.527
+      ]
+    },
+    "confidence": {
+      "total_points": 265,
+      "high_confidence_count": 149,
+      "medium_confidence_count": 116,
+      "low_confidence_inferred_count": 0,
+      "high_confidence_pct": 56.23,
+      "medium_confidence_pct": 43.77,
+      "low_confidence_inferred_pct": 0.0,
+      "confidence_file": "G:\\Coding\\Projects\\3D_drone\\jobs\\63d25804\\output\\confidence_pcd.ply",
+      "legend": {
+        "green": "High Confidence (\u2265 0.8): Multi-view stereo validated",
+        "yellow": "Medium Confidence (0.4 - 0.8): Sparse visual support",
+        "orange_red": "Low/Inferred Confidence (< 0.4): Monocular depth fill-in"
+      }
+    },
+    "scale_factor": 1.417054,
+    "accuracy_grade": "approximate_gps",
+    "calibration": {
+      "method": "gps_trajectory_alignment",
+      "reference_origin": {
+        "lat0": 0.0,
+        "lon0": 0.0,
+        "alt0": 0.0
+      },
+      "scale_factor": 1.417054,
+      "rotation_matrix": [
+        [
+          0.980428,
+          -0.195903,
+          -0.019589
+        ],
+        [
+          0.19608,
+          0.980559,
+          0.007538
+        ],
+        [
+          0.017732,
+          -0.011232,
+          0.99978
+        ]
+      ],
+      "translation_vector": [
+        4.2335,
+        1.3468,
+        -2.7098
+      ],
+      "georeferencing_rmse_meters": 3.1931,
+      "accuracy_grade": "approximate_gps",
+      "disclaimer": "Approximate GPS Georeferencing: Consumer drone GPS accuracy is typically \u00b12-5 meters. Never claim centimeter accuracy without RTK, PPK, or surveyed Ground Control Points (GCPs)."
+    }
+  }
+}

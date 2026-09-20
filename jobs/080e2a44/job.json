@@ -1,0 +1,86 @@
+{
+  "id": "080e2a44",
+  "created_at": 1789839924.8043003,
+  "status": "COMPLETED",
+  "stage": "COMPLETED",
+  "progress": 100,
+  "video_path": "G:\\Coding\\Projects\\3D_drone\\data\\uploads\\upload_41959105_sample_drone.mp4",
+  "job_dir": "G:\\Coding\\Projects\\3D_drone\\jobs\\080e2a44",
+  "sample_fps": 2.0,
+  "blur_threshold": 100.0,
+  "voxel_size": 0.05,
+  "mock_mode": false,
+  "registered_images": 16,
+  "point_count": 265,
+  "mesh_triangle_count": 0,
+  "scale_factor": 1.0,
+  "logs": [
+    "Job queued.",
+    "[23:15:24] Extracting frames at 2.0 FPS with blur threshold 100.0...",
+    "[23:15:25] Extracted 16 sharp frames (0 blurry frames rejected).",
+    "[23:15:25] Running feature extraction and sparse structure-from-motion...",
+    "[23:15:33] Sparse reconstruction finished: 16 cameras registered.",
+    "[23:15:33] Running PatchMatch stereo and multi-view stereo fusion...",
+    "[23:15:34] Dense MVS was skipped: COLMAP dense stereo requires an NVIDIA GPU (CUDA), which is unavailable. Output is built from the verified sparse reconstruction instead.",
+    "[23:15:34] Applying Open3D statistical outlier removal, voxel downsampling, and meshing...",
+    "[23:15:34] Open3D processing finished: 265 points, 0 triangles.",
+    "[23:15:34] Evaluating multi-view geometric confidence and monocular fill...",
+    "[23:15:34] Confidence evaluated: 56.23% high confidence points.",
+    "[23:15:34] Pipeline finished successfully!"
+  ],
+  "error": null,
+  "outputs": {
+    "frames_meta": "/jobs/080e2a44/frames/frames_meta.json",
+    "sparse_ply": "/jobs/080e2a44/reconstruction/sparse_points.ply",
+    "dense_ply": "/jobs/080e2a44/output/point_cloud.ply",
+    "mesh_ply": null,
+    "mesh_glb": null,
+    "confidence_ply": "/jobs/080e2a44/output/confidence_pcd.ply",
+    "metrics_json": "/jobs/080e2a44/output/metrics.json"
+  },
+  "metrics": {
+    "job_id": "080e2a44",
+    "is_mock": false,
+    "dense_mode": "sparse_fallback",
+    "dense_notice": "Dense MVS was skipped: COLMAP dense stereo requires an NVIDIA GPU (CUDA), which is unavailable. Output is built from the verified sparse reconstruction instead.",
+    "registered_images": 16,
+    "total_frames_extracted": 16,
+    "blurry_frames_rejected": 0,
+    "point_count": 265,
+    "mesh_triangle_count": 0,
+    "bounding_box": {
+      "min": [
+        -16.352,
+        -16.629,
+        0.24
+      ],
+      "max": [
+        26.247,
+        14.479,
+        46.766
+      ],
+      "extent": [
+        42.599,
+        31.108,
+        46.527
+      ]
+    },
+    "confidence": {
+      "total_points": 265,
+      "high_confidence_count": 149,
+      "medium_confidence_count": 116,
+      "low_confidence_inferred_count": 0,
+      "high_confidence_pct": 56.23,
+      "medium_confidence_pct": 43.77,
+      "low_confidence_inferred_pct": 0.0,
+      "confidence_file": "G:\\Coding\\Projects\\3D_drone\\jobs\\080e2a44\\output\\confidence_pcd.ply",
+      "legend": {
+        "green": "High Confidence (\u2265 0.8): Multi-view stereo validated",
+        "yellow": "Medium Confidence (0.4 - 0.8): Sparse visual support",
+        "orange_red": "Low/Inferred Confidence (< 0.4): Monocular depth fill-in"
+      }
+    },
+    "scale_factor": 1.0,
+    "accuracy_grade": "uncalibrated_arbitrary_scale"
+  }
+}

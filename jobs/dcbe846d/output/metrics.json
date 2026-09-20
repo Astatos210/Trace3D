@@ -1,0 +1,45 @@
+{
+  "job_id": "dcbe846d",
+  "is_mock": false,
+  "dense_mode": "sparse_fallback",
+  "dense_notice": "Dense MVS was skipped: COLMAP dense stereo requires an NVIDIA GPU (CUDA), which is unavailable. Output is built from the verified sparse reconstruction instead.",
+  "registered_images": 5,
+  "total_frames_extracted": 16,
+  "blurry_frames_rejected": 0,
+  "point_count": 166,
+  "mesh_triangle_count": 0,
+  "bounding_box": {
+    "min": [
+      -41.105,
+      -72.17,
+      -0.118
+    ],
+    "max": [
+      54.218,
+      42.811,
+      2.676
+    ],
+    "extent": [
+      95.323,
+      114.981,
+      2.795
+    ]
+  },
+  "confidence": {
+    "total_points": 196,
+    "high_confidence_count": 70,
+    "medium_confidence_count": 96,
+    "low_confidence_inferred_count": 30,
+    "high_confidence_pct": 35.71,
+    "medium_confidence_pct": 48.98,
+    "low_confidence_inferred_pct": 15.31,
+    "confidence_file": "G:\\Coding\\Projects\\3D_drone\\jobs\\dcbe846d\\output\\confidence_pcd.ply",
+    "legend": {
+      "green": "High Confidence (\u2265 0.8): Multi-view stereo validated",
+      "yellow": "Medium Confidence (0.4 - 0.8): Sparse visual support",
+      "orange_red": "Low/Inferred Confidence (< 0.4): Monocular depth fill-in"
+    }
+  },
+  "scale_factor": 1.0,
+  "accuracy_grade": "uncalibrated_arbitrary_scale"
+}

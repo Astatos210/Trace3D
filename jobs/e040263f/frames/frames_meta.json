@@ -1,0 +1,13 @@
+{
+  "video_path": "G:\\Coding\\Projects\\3D_drone\\data\\uploads\\upload_a527cbd5_Video_1.mp4",
+  "duration_sec": 6.2,
+  "native_fps": 30.0,
+  "total_video_frames": 186,
+  "sample_fps": 2.0,
+  "blur_threshold": 100.0,
+  "width": 1920,
+  "height": 1080,
+  "extracted_sharp_count": 0,
+  "rejected_blurry_count": 13,
+  "frames": []
+}

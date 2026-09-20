@@ -1,0 +1,61 @@
+{
+  "job_id": "715982fc",
+  "is_mock": true,
+  "registered_images": 12,
+  "total_frames_extracted": 12,
+  "blurry_frames_rejected": 0,
+  "point_count": 14222,
+  "mesh_triangle_count": 0,
+  "bounding_box": {
+    "min": [
+      -7.998,
+      -7.998,
+      0.692
+    ],
+    "max": [
+      7.994,
+      7.997,
+      4.098
+    ],
+    "extent": [
+      15.993,
+      15.995,
+      3.406
+    ]
+  },
+  "confidence": {
+    "total_points": 16222,
+    "high_confidence_count": 13297,
+    "medium_confidence_count": 925,
+    "low_confidence_inferred_count": 2000,
+    "high_confidence_pct": 81.97,
+    "medium_confidence_pct": 5.7,
+    "low_confidence_inferred_pct": 12.33,
+    "confidence_file": "G:\\Coding\\Projects\\3D_drone\\jobs\\715982fc\\output\\confidence_pcd.ply",
+    "legend": {
+      "green": "High Confidence (\u2265 0.8): Multi-view stereo validated",
+      "yellow": "Medium Confidence (0.4 - 0.8): Sparse visual support",
+      "orange_red": "Low/Inferred Confidence (< 0.4): Monocular depth fill-in"
+    }
+  },
+  "scale_factor": 3.0,
+  "accuracy_grade": "surveyed_baseline_calibrated",
+  "calibration": {
+    "method": "two_point_known_distance",
+    "p1": [
+      -2.0,
+      0.0,
+      1.0
+    ],
+    "p2": [
+      2.0,
+      0.0,
+      1.0
+    ],
+    "reconstructed_distance_units": 4.0,
+    "known_distance_meters": 12.0,
+    "scale_factor": 3.0,
+    "accuracy_grade": "surveyed_baseline_calibrated",
+    "disclaimer": "Metric scale derived from user-defined known distance baseline. Absolute positioning is uncalibrated unless GPS control points are also provided."
+  }
+}
