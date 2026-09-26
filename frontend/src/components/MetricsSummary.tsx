@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart3, Download, FileText, CheckCircle, Database } from 'lucide-react';
+import { BarChart3, Download, FileText, CheckCircle, Box, Layers, Ruler } from 'lucide-react';
 import { JobStatus, assetUrl } from '../services/api';
 
 interface MetricsSummaryProps {
@@ -10,6 +10,7 @@ export const MetricsSummary: React.FC<MetricsSummaryProps> = ({ job }) => {
   if (!job || job.status !== 'COMPLETED') return null;
 
   const outputs = job.outputs;
+  const isCalibrated = job.scale_factor !== 1.0;
 
   return (
     <div className="card">
@@ -46,15 +47,21 @@ export const MetricsSummary: React.FC<MetricsSummaryProps> = ({ job }) => {
         </div>
 
         <div style={{ background: 'var(--bg-primary)', padding: '0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Mesh Triangles</div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+            <Layers size={12} />
+            Mesh Triangles
+          </div>
           <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--accent-yellow)', fontFamily: 'var(--font-mono)' }}>
             {job.mesh_triangle_count.toLocaleString()}
           </div>
         </div>
 
         <div style={{ background: 'var(--bg-primary)', padding: '0.75rem', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Metric Scale Factor</div>
-          <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+            <Ruler size={12} />
+            Metric Scale Factor
+          </div>
+          <div style={{ fontSize: '1.25rem', fontWeight: 700, color: isCalibrated ? 'var(--accent-green)' : 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
             {job.scale_factor.toFixed(4)}x
           </div>
         </div>
@@ -62,15 +69,41 @@ export const MetricsSummary: React.FC<MetricsSummaryProps> = ({ job }) => {
 
       {/* Downloadable Assets */}
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-        {outputs.dense_ply && (
+        {/* Triangular Mesh Downloads */}
+        {(outputs.scaled_mesh_ply || outputs.mesh_ply) && (
           <a
-            href={assetUrl(outputs.dense_ply)}
+            href={assetUrl(outputs.scaled_mesh_ply || outputs.mesh_ply)}
+            download
+            className="btn btn-primary"
+            style={{ textDecoration: 'none', fontSize: '0.8rem' }}
+          >
+            <Box size={14} />
+            {isCalibrated ? 'Download Calibrated Mesh (.PLY)' : 'Download Triangular Mesh (.PLY)'}
+          </a>
+        )}
+
+        {(outputs.scaled_mesh_obj || outputs.mesh_obj) && (
+          <a
+            href={assetUrl(outputs.scaled_mesh_obj || outputs.mesh_obj)}
             download
             className="btn btn-secondary"
             style={{ textDecoration: 'none', fontSize: '0.8rem' }}
           >
             <Download size={14} />
-            Download Point Cloud (.PLY)
+            Download Mesh (.OBJ)
+          </a>
+        )}
+
+        {/* Point Cloud Downloads */}
+        {outputs.dense_ply && (
+          <a
+            href={assetUrl(outputs.scaled_point_cloud || outputs.dense_ply)}
+            download
+            className="btn btn-secondary"
+            style={{ textDecoration: 'none', fontSize: '0.8rem' }}
+          >
+            <Download size={14} />
+            Point Cloud (.PLY)
           </a>
         )}
 
@@ -82,19 +115,7 @@ export const MetricsSummary: React.FC<MetricsSummaryProps> = ({ job }) => {
             style={{ textDecoration: 'none', fontSize: '0.8rem' }}
           >
             <Download size={14} />
-            Confidence Point Cloud (.PLY)
-          </a>
-        )}
-
-        {outputs.mesh_ply && (
-          <a
-            href={assetUrl(outputs.mesh_ply)}
-            download
-            className="btn btn-secondary"
-            style={{ textDecoration: 'none', fontSize: '0.8rem' }}
-          >
-            <Download size={14} />
-            Download Mesh (.PLY)
+            Confidence Cloud (.PLY)
           </a>
         )}
 
@@ -107,7 +128,7 @@ export const MetricsSummary: React.FC<MetricsSummaryProps> = ({ job }) => {
             style={{ textDecoration: 'none', fontSize: '0.8rem' }}
           >
             <FileText size={14} />
-            View metrics.json
+            metrics.json
           </a>
         )}
       </div>

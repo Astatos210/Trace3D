@@ -1,0 +1,16 @@
+# GitHub Linguist Language Detection
+# Ensure frontend TypeScript, TSX, CSS and HTML are properly counted in repo stats
+frontend/** linguist-detectable=true
+backend/** linguist-detectable=true
+pipeline/** linguist-detectable=true
+
+# Ignore generated 3D data, databases, and logs from GitHub language statistics
+jobs/** linguist-vendored
+data/** linguist-vendored
+tools/** linguist-vendored
+*.ply linguist-vendored
+*.obj linguist-vendored
+*.glb linguist-vendored
+*.db linguist-vendored
+*.log linguist-vendored
+*.json linguist-generated

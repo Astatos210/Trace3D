@@ -31,9 +31,13 @@ export interface JobStatus {
     sparse_ply?: string;
     dense_ply?: string;
     mesh_ply?: string;
+    mesh_obj?: string;
     mesh_glb?: string;
     confidence_ply?: string;
     metrics_json?: string;
+    scaled_mesh_ply?: string;
+    scaled_mesh_obj?: string;
+    scaled_point_cloud?: string;
   };
 }
 

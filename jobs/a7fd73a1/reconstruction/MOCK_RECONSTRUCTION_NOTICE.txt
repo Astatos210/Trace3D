@@ -1,2 +1,0 @@
-NOTICE: This sparse reconstruction was generated in MOCK MODE for frontend UI testing.
-COLMAP was not detected on the host system. This is synthetic test geometry.

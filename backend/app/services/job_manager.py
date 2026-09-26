@@ -16,7 +16,7 @@ from pipeline.colmap_runner import (
     ColmapNotFoundError,
     ColmapExecutionError
 )
-from pipeline.open3d_processor import process_point_cloud
+from pipeline.open3d_processor import process_point_cloud, apply_metric_scale_to_outputs
 from pipeline.confidence_estimator import compute_point_cloud_confidence
 from pipeline.metric_calibrator import calibrate_scale_from_two_points, calibrate_with_gps
 
@@ -245,6 +245,7 @@ class JobManager:
                 "sparse_ply": f"/jobs/{job_id}/reconstruction/sparse_points.ply" if sparse_result.get("sparse_ply") else None,
                 "dense_ply": f"/jobs/{job_id}/output/point_cloud.ply",
                 "mesh_ply": f"/jobs/{job_id}/output/mesh.ply" if o3d_metrics["files"]["mesh_ply"] else None,
+                "mesh_obj": f"/jobs/{job_id}/output/mesh.obj" if o3d_metrics["files"]["mesh_obj"] else None,
                 "mesh_glb": f"/jobs/{job_id}/output/mesh.glb" if o3d_metrics["files"]["mesh_glb"] else None,
                 "confidence_ply": f"/jobs/{job_id}/output/confidence_pcd.ply",
                 "metrics_json": f"/jobs/{job_id}/output/metrics.json"
@@ -325,22 +326,39 @@ class JobManager:
             raise ValueError(f"Unknown calibration method: {method}")
 
         # Update metrics
-        job["scale_factor"] = calib["scale_factor"]
+        scale_val = calib["scale_factor"]
+        job["scale_factor"] = scale_val
         job["metrics"]["calibration"] = calib
-        job["metrics"]["scale_factor"] = calib["scale_factor"]
+        job["metrics"]["scale_factor"] = scale_val
         job["metrics"]["accuracy_grade"] = calib["accuracy_grade"]
 
+        # Apply physical scale to point clouds and 3D triangular meshes
+        output_dir = Path(job["job_dir"]) / "output"
+        scaled_files = apply_metric_scale_to_outputs(str(output_dir), scale_val)
+        if "scaled_mesh_ply" in scaled_files:
+            job["outputs"]["scaled_mesh_ply"] = f"/jobs/{job_id}/output/scaled_mesh.ply"
+        if "scaled_mesh_obj" in scaled_files:
+            job["outputs"]["scaled_mesh_obj"] = f"/jobs/{job_id}/output/scaled_mesh.obj"
+        if "scaled_point_cloud" in scaled_files:
+            job["outputs"]["scaled_point_cloud"] = f"/jobs/{job_id}/output/scaled_point_cloud.ply"
+
+        # Update bounding box with scaled dimensions in real meters
+        if "bounding_box" in job["metrics"]:
+            orig_extent = job["metrics"]["bounding_box"].get("extent", [0, 0, 0])
+            job["metrics"]["scaled_bounding_box_meters"] = [round(float(v) * scale_val, 3) for v in orig_extent]
+
         # Persist updated metrics
-        metrics_file = Path(job["job_dir"]) / "output" / "metrics.json"
+        metrics_file = output_dir / "metrics.json"
         if metrics_file.exists():
             with open(metrics_file, "w", encoding="utf-8") as f:
                 json.dump(job["metrics"], f, indent=2)
 
         self._update_job(
             job_id,
-            scale_factor=calib["scale_factor"],
+            scale_factor=scale_val,
+            outputs=job["outputs"],
             metrics=job["metrics"],
-            log=f"Applied metric calibration ({method}): scale={calib['scale_factor']:.4f}."
+            log=f"Applied metric calibration ({method}): scale={scale_val:.4f}x. Scaled mesh & point cloud regenerated."
         )
 
         return calib

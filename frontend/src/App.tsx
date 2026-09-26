@@ -123,8 +123,10 @@ export const App: React.FC = () => {
           {/* Right Column: 3D Visualization Canvas */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', position: 'sticky', top: '1.5rem' }}>
             <Viewer3D
-              plyUrl={jobStatus?.outputs.dense_ply ?? null}
-              confidencePlyUrl={jobStatus?.outputs.confidence_ply ?? null}
+              plyUrl={jobStatus?.outputs.scaled_point_cloud || jobStatus?.outputs.dense_ply || null}
+              confidencePlyUrl={jobStatus?.outputs.confidence_ply || null}
+              meshPlyUrl={jobStatus?.outputs.scaled_mesh_ply || jobStatus?.outputs.mesh_ply || null}
+              meshObjUrl={jobStatus?.outputs.scaled_mesh_obj || jobStatus?.outputs.mesh_obj || null}
               onPointsSelected={handlePointsSelected}
               scaleFactor={jobStatus?.scale_factor ?? 1.0}
             />
