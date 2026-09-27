@@ -4,6 +4,7 @@ import uuid
 import time
 import logging
 import threading
+import shutil
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 from concurrent.futures import ThreadPoolExecutor
@@ -29,7 +30,29 @@ class JobManager:
         self.jobs: Dict[str, Dict[str, Any]] = {}
         self.lock = threading.Lock()
         self.executor = ThreadPoolExecutor(max_workers=2)
+        self.pending_jobs = 0
+        self.max_pending_jobs = settings.max_pending_jobs
+        self._cleanup_expired_jobs()
         self._load_existing_jobs()
+
+    def _cleanup_expired_jobs(self):
+        cutoff = time.time() - settings.job_retention_days * 86400
+        for folder in self.jobs_dir.iterdir():
+            if not folder.is_dir():
+                continue
+            meta = folder / "job.json"
+            try:
+                if not meta.exists():
+                    continue
+                data = json.loads(meta.read_text(encoding="utf-8"))
+                if data.get("created_at", 0) >= cutoff:
+                    continue
+                upload = Path(data.get("video_path", ""))
+                if upload.is_relative_to(settings.uploads_dir.resolve()):
+                    upload.unlink(missing_ok=True)
+                shutil.rmtree(folder)
+            except Exception as exc:
+                logger.warning("Could not clean expired job %s: %s", folder.name, exc)
 
     def _load_existing_jobs(self):
         """Loads metadata for previously created jobs from disk."""
@@ -40,6 +63,10 @@ class JobManager:
                     try:
                         with open(job_meta_file, "r", encoding="utf-8") as f:
                             data = json.load(f)
+                            if data.get("status") in {"QUEUED", "PROCESSING"}:
+                                data.update(status="FAILED", stage="FAILED",
+                                            error="Server restarted while this job was processing.")
+                                job_meta_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
                             self.jobs[data["id"]] = data
                     except Exception as e:
                         logger.warning(f"Could not load job {job_folder.name}: {e}")
@@ -53,6 +80,10 @@ class JobManager:
         mock_mode: bool = False
     ) -> Dict[str, Any]:
         """Creates a new reconstruction job and submits it to the background executor."""
+        with self.lock:
+            if self.pending_jobs >= self.max_pending_jobs:
+                raise RuntimeError("The reconstruction queue is full. Try again after a job finishes.")
+            self.pending_jobs += 1
         job_id = str(uuid.uuid4())[:8]
         job_dir = self.jobs_dir / job_id
         job_dir.mkdir(parents=True, exist_ok=True)
@@ -83,8 +114,13 @@ class JobManager:
             self.jobs[job_id] = job_info
             self._save_job_to_disk(job_id)
 
-        self.executor.submit(self._run_pipeline, job_id)
+        future = self.executor.submit(self._run_pipeline, job_id)
+        future.add_done_callback(self._job_finished)
         return job_info
+
+    def _job_finished(self, _future):
+        with self.lock:
+            self.pending_jobs = max(0, self.pending_jobs - 1)
 
     def _update_job(self, job_id: str, **kwargs):
         """Thread-safe update to job metadata."""
@@ -227,12 +263,12 @@ class JobManager:
                 job_id,
                 stage="CONFIDENCE_SCORING",
                 progress=95,
-                log="Evaluating multi-view geometric confidence and monocular fill..."
+                log="Estimating local point-density support (heuristic; no inferred points added)..."
             )
             conf_metrics = compute_point_cloud_confidence(
                 input_ply=o3d_metrics["files"]["filtered_point_cloud"],
                 output_dir=str(output_dir),
-                simulate_monocular_fill=True
+                simulate_monocular_fill=False
             )
             self._update_job(
                 job_id,
@@ -317,7 +353,12 @@ class JobManager:
             p1 = params["p1"]
             p2 = params["p2"]
             dist_m = float(params["known_distance_meters"])
-            calib = calibrate_scale_from_two_points(p1, p2, dist_m)
+            previous_scale = float(job.get("scale_factor", 1.0))
+            calib = calibrate_scale_from_two_points(p1, p2, dist_m * previous_scale)
+            calib["reconstructed_distance_units"] = round(
+                calib["reconstructed_distance_units"] / previous_scale, 4
+            )
+            calib["known_distance_meters"] = round(dist_m, 4)
         elif method == "gps":
             cam_pts = params["camera_positions"]
             gps_pts = params["gps_coordinates"]
@@ -332,20 +373,33 @@ class JobManager:
         job["metrics"]["scale_factor"] = scale_val
         job["metrics"]["accuracy_grade"] = calib["accuracy_grade"]
 
-        # Apply physical scale to point clouds and 3D triangular meshes
+        rotation = calib.get("rotation_matrix")
+        translation = calib.get("translation_vector")
         output_dir = Path(job["job_dir"]) / "output"
-        scaled_files = apply_metric_scale_to_outputs(str(output_dir), scale_val)
+        scaled_files = apply_metric_scale_to_outputs(
+            str(output_dir), scale_val, rotation=rotation, translation=translation
+        )
         if "scaled_mesh_ply" in scaled_files:
             job["outputs"]["scaled_mesh_ply"] = f"/jobs/{job_id}/output/scaled_mesh.ply"
         if "scaled_mesh_obj" in scaled_files:
             job["outputs"]["scaled_mesh_obj"] = f"/jobs/{job_id}/output/scaled_mesh.obj"
+        if "scaled_mesh_glb" in scaled_files:
+            job["outputs"]["scaled_mesh_glb"] = f"/jobs/{job_id}/output/scaled_mesh.glb"
         if "scaled_point_cloud" in scaled_files:
             job["outputs"]["scaled_point_cloud"] = f"/jobs/{job_id}/output/scaled_point_cloud.ply"
+        if "scaled_confidence_ply" in scaled_files:
+            job["outputs"]["scaled_confidence_ply"] = f"/jobs/{job_id}/output/scaled_confidence_pcd.ply"
 
         # Update bounding box with scaled dimensions in real meters
         if "bounding_box" in job["metrics"]:
             orig_extent = job["metrics"]["bounding_box"].get("extent", [0, 0, 0])
             job["metrics"]["scaled_bounding_box_meters"] = [round(float(v) * scale_val, 3) for v in orig_extent]
+        if method == "gps":
+            job["metrics"]["georeferenced_coordinate_frame"] = "local_ENU_meters"
+        if "bounding_box" in scaled_files:
+            job["metrics"]["scaled_bounding_box_meters"] = scaled_files["bounding_box"]["extent"]
+            if method == "gps":
+                job["metrics"]["georeferenced_bounding_box_enu_meters"] = scaled_files["bounding_box"]
 
         # Persist updated metrics
         metrics_file = output_dir / "metrics.json"

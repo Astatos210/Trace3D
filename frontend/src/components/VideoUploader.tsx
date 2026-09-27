@@ -117,7 +117,7 @@ export const VideoUploader: React.FC<VideoUploaderProps> = ({
             disabled={disabled}
           >
             <Upload size={16} />
-            Upload Video (MP4)
+              Upload Video (max 1 GB)
           </button>
         </div>
 

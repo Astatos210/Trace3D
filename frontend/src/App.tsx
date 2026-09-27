@@ -72,12 +72,19 @@ export const App: React.FC = () => {
     setPickedPoint2(p2);
   };
 
-  const handleCalibrationApplied = (result: CalibrationResult) => {
+  const handleCalibrationApplied = async (result: CalibrationResult) => {
     if (jobStatus) {
       setJobStatus({
         ...jobStatus,
         scale_factor: result.scale_factor
       });
+    }
+    if (activeJobId) {
+      try {
+        setJobStatus(await fetchJobStatus(activeJobId));
+      } catch (err) {
+        console.error('Could not refresh calibrated outputs:', err);
+      }
     }
   };
 
@@ -91,7 +98,7 @@ export const App: React.FC = () => {
       />
 
       <main className="container" style={{ flex: 1, padding: '1.5rem' }}>
-        <div style={{
+        <div className="dashboard-grid" style={{
           display: 'grid',
           gridTemplateColumns: 'minmax(420px, 1fr) minmax(500px, 1.4fr)',
           gap: '1.5rem',
@@ -121,10 +128,10 @@ export const App: React.FC = () => {
           </div>
 
           {/* Right Column: 3D Visualization Canvas */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', position: 'sticky', top: '1.5rem' }}>
+          <div className="dashboard-viewer" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', position: 'sticky', top: '1.5rem' }}>
             <Viewer3D
               plyUrl={jobStatus?.outputs.scaled_point_cloud || jobStatus?.outputs.dense_ply || null}
-              confidencePlyUrl={jobStatus?.outputs.confidence_ply || null}
+              confidencePlyUrl={jobStatus?.outputs.scaled_confidence_ply || jobStatus?.outputs.confidence_ply || null}
               meshPlyUrl={jobStatus?.outputs.scaled_mesh_ply || jobStatus?.outputs.mesh_ply || null}
               meshObjUrl={jobStatus?.outputs.scaled_mesh_obj || jobStatus?.outputs.mesh_obj || null}
               onPointsSelected={handlePointsSelected}
@@ -141,7 +148,7 @@ export const App: React.FC = () => {
         fontSize: '0.8rem',
         color: 'var(--text-muted)'
       }}>
-        Drone3D Prototype • Single-Pass Drone Video to Metrically Scaled 3D Model • FastAPI • COLMAP • Open3D • Three.js
+        Trace3D Prototype • Single-Pass Drone Video to Metrically Scaled 3D Model • FastAPI • COLMAP • Open3D • Three.js
       </footer>
     </div>
   );

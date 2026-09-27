@@ -1,6 +1,6 @@
-# 🚁 Drone3D: Single-Pass Drone Video to Metrically Scaled 3D Model Prototype
+# 🚁 Trace3D: Single-Pass Drone Video to Metrically Scaled 3D Model Prototype
 
-A production-grade monorepo prototype for turning single-pass aerial drone video into metrically scaled, confidence-scored 3D point clouds and meshes using **FastAPI**, **React + TypeScript + Three.js**, **COLMAP**, and **Open3D**.
+A prototype for turning single-pass aerial drone video into point clouds and meshes, with optional metric scaling and approximate GPS alignment, using **FastAPI**, **React + TypeScript + Three.js**, **COLMAP**, and **Open3D**.
 
 ---
 
@@ -28,7 +28,7 @@ A production-grade monorepo prototype for turning single-pass aerial drone video
 │   ├── colmap_runner.py      # COLMAP CLI wrapper (feature extraction, matching, mapper, MVS)
 │   ├── open3d_processor.py   # Statistical outlier removal, voxel downsampling, normal estimation, meshing
 │   ├── metric_calibrator.py  # WGS-84 to ENU, Umeyama 7-DoF similarity transform, 2-point scale fallback
-│   └── confidence_estimator.py # Confidence evaluation & monocular depth fill-in
+│   └── confidence_estimator.py # Local point-density support heuristic
 ├── frontend/                 # React 19 + TypeScript + Vite + Three.js UI
 │   ├── src/
 │   │   ├── components/       # Header, VideoUploader, JobProgress, Viewer3D, MetricCalibration, MetricsSummary
@@ -85,11 +85,10 @@ A production-grade monorepo prototype for turning single-pass aerial drone video
   $$s = \frac{d_{\text{real}}}{\|p_1 - p_2\|}$$
 - **Accuracy Disclaimer**: Consumer drone GPS alignment is strictly labeled as **Approximate GPS Georeferencing** ($\pm 2 \text{ to } 5\text{m}$ residual RMSE). Centimeter accuracy is never claimed without RTK, PPK, or surveyed Ground Control Points (GCPs).
 
-### 5. Confidence-Aware Geometry Layer (`pipeline/confidence_estimator.py`)
-- Multi-view stereo validated points receive high confidence ($C \ge 0.8$, rendered in **Green**).
-- Sparse points receive medium confidence ($0.4 \le C < 0.8$, rendered in **Yellow**).
-- Inferred / monocular depth fill-in regions receive low confidence ($C < 0.4$, rendered in **Red/Orange**).
-- Interactive 3D viewer supports switching between **RGB True Color**, **Confidence Heatmap**, and **High Confidence Only** filter.
+### 5. Point-Density Support View (`pipeline/confidence_estimator.py`)
+- The color overlay reports a local-neighborhood density heuristic only; it does not establish MVS validation or infer missing depth.
+- No synthetic points are added to the reconstructed cloud.
+- The viewer supports RGB and density-heuristic coloring.
 
 ---
 
@@ -135,6 +134,7 @@ Open `http://localhost:3000` in your browser.
 ```bash
 docker-compose up --build
 ```
+This MVP prototype is intended for local demos and competition previews. Configure `ALLOWED_ORIGINS` to the trusted frontend origins when deploying across domains.
 
 ---
 
@@ -188,14 +188,14 @@ The whole stack ships as a single container: the React SPA is built at image-bui
 1. Push this repository to a **public GitHub repo**.
 2. Go to [huggingface.co/new-space](https://huggingface.co/new-space) → **Create Space**.
 3. Fill in:
-   - **Space name:** e.g. `drone3d`
+   - **Space name:** e.g. `trace-d`
    - **License:** any
    - **SDK:** select **Docker** → **Blank**
    - **Hardware:** **CPU basic · 2 vCPU · 16 GB** (the free tier)
 4. In the Space, open **Files** → **Add file** → **Upload files from git-terminal** and push this whole repo (the root `Dockerfile` is what HF builds — it expects to sit at the repo root).
-   - The easiest way: `git clone https://huggingface.co/spaces/<YOUR_USERNAME>/drone3d`, copy this project into it, `git add . && git commit -m "Deploy" && git push`.
+   - The easiest way: `git clone https://huggingface.co/spaces/<YOUR_USERNAME>/trace-d`, copy this project into it, `git add . && git commit -m "Deploy" && git push`.
 5. Wait for the build (~5–10 min the first time; COLMAP is a big install). Live logs are on the **App** tab.
-6. Done — your site is at `https://<YOUR_USERNAME>-drone3d.hf.space`.
+6. Done — your site is at `https://<YOUR_USERNAME>-trace-d.hf.space`.
 
 ### Free-tier caveats (be honest about them)
 
@@ -217,16 +217,16 @@ The whole stack ships as a single container: the React SPA is built at image-bui
 
 You **can** use GitHub + Vercel — for the frontend. The catch: Vercel has no VM, and its serverless functions cannot run COLMAP (multi-minute subprocess pipelines writing to disk). So this hybrid keeps the heavy work on the free HF Space and gets a slick Vercel URL + global CDN for the UI:
 
-1. Deploy the backend once on HF Spaces (steps above) — note your URL, e.g. `https://youruser-drone3d.hf.space`.
+1. Deploy the backend once on HF Spaces (steps above) — note your URL, e.g. `https://youruser-trace-d.hf.space`.
 2. Push this repo to GitHub.
 3. On [vercel.com](https://vercel.com) → **Add New Project** → import the GitHub repo.
 4. Vercel auto-detects Vite. Set:
    - **Root Directory:** `frontend`
-   - **Environment variable:** `VITE_API_BASE` = `https://youruser-drone3d.hf.space`
+   - **Environment variable:** `VITE_API_BASE` = `https://youruser-trace-d.hf.space`
 5. Replace the two `YOUR-SPACE.hf.space` placeholders in `vercel.json` with your real Space URL, commit, and deploy.
 6. Your site is live at `https://your-project.vercel.app`.
 
-How it works: `VITE_API_BASE` is baked into the frontend bundle at build time (`frontend/src/services/api.ts`), so all API calls, PLY downloads, and artifact links point at the Space origin. The `vercel.json` rewrites also proxy `/api`, `/jobs`, and `/data` through Vercel, so the browser sees a single origin and no CORS setup is needed. Leave `VITE_API_BASE` unset and everything stays same-origin (Docker/SPA/nginx modes) — default behavior is unchanged.
+How it works: `VITE_API_BASE` is baked into the frontend bundle at build time (`frontend/src/services/api.ts`), so API calls and artifact fetches point at the Space origin. The API has no key prompt; configure `ALLOWED_ORIGINS` for the deployment. Leave `VITE_API_BASE` unset and same-origin Docker/SPA/nginx modes are used.
 
 Caveats: the Space's ephemeral-disk and sleep caveats still apply; and Vercel's free proxy has a 60s edge timeout, plenty for API polling but short for an upload-plus-start round trip — large videos should be uploaded directly from the browser to the backend URL if that ever bites.
 

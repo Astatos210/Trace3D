@@ -1,6 +1,6 @@
 import React from 'react';
 import { BarChart3, Download, FileText, CheckCircle, Box, Layers, Ruler } from 'lucide-react';
-import { JobStatus, assetUrl } from '../services/api';
+import { downloadArtifact, JobStatus } from '../services/api';
 
 interface MetricsSummaryProps {
   job: JobStatus | null;
@@ -10,7 +10,12 @@ export const MetricsSummary: React.FC<MetricsSummaryProps> = ({ job }) => {
   if (!job || job.status !== 'COMPLETED') return null;
 
   const outputs = job.outputs;
-  const isCalibrated = job.scale_factor !== 1.0;
+  const isCalibrated = job.scale_factor !== 1.0 || Boolean(
+    outputs.scaled_point_cloud || outputs.scaled_mesh_ply || outputs.scaled_mesh_glb
+  );
+  const download = (path: string | undefined, filename: string) => {
+    if (path) void downloadArtifact(path, filename).catch((error) => window.alert(error.message));
+  };
 
   return (
     <div className="card">
@@ -71,65 +76,76 @@ export const MetricsSummary: React.FC<MetricsSummaryProps> = ({ job }) => {
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
         {/* Triangular Mesh Downloads */}
         {(outputs.scaled_mesh_ply || outputs.mesh_ply) && (
-          <a
-            href={assetUrl(outputs.scaled_mesh_ply || outputs.mesh_ply)}
-            download
+          <button
+            type="button"
+            onClick={() => download(outputs.scaled_mesh_ply || outputs.mesh_ply, 'drone-model.ply')}
             className="btn btn-primary"
-            style={{ textDecoration: 'none', fontSize: '0.8rem' }}
+            style={{ fontSize: '0.8rem' }}
           >
             <Box size={14} />
             {isCalibrated ? 'Download Calibrated Mesh (.PLY)' : 'Download Triangular Mesh (.PLY)'}
-          </a>
+          </button>
         )}
 
         {(outputs.scaled_mesh_obj || outputs.mesh_obj) && (
-          <a
-            href={assetUrl(outputs.scaled_mesh_obj || outputs.mesh_obj)}
-            download
+          <button
+            type="button"
+            onClick={() => download(outputs.scaled_mesh_obj || outputs.mesh_obj, 'drone-model.obj')}
             className="btn btn-secondary"
-            style={{ textDecoration: 'none', fontSize: '0.8rem' }}
+            style={{ fontSize: '0.8rem' }}
           >
             <Download size={14} />
             Download Mesh (.OBJ)
-          </a>
+          </button>
+        )}
+
+        {(outputs.scaled_mesh_glb || outputs.mesh_glb) && (
+          <button
+            type="button"
+            onClick={() => download(outputs.scaled_mesh_glb || outputs.mesh_glb, 'drone-model.glb')}
+            className="btn btn-secondary"
+            style={{ fontSize: '0.8rem' }}
+          >
+            <Download size={14} />
+            Download Mesh (.GLB)
+          </button>
         )}
 
         {/* Point Cloud Downloads */}
         {outputs.dense_ply && (
-          <a
-            href={assetUrl(outputs.scaled_point_cloud || outputs.dense_ply)}
-            download
+          <button
+            type="button"
+            onClick={() => download(outputs.scaled_point_cloud || outputs.dense_ply, 'point-cloud.ply')}
             className="btn btn-secondary"
-            style={{ textDecoration: 'none', fontSize: '0.8rem' }}
+            style={{ fontSize: '0.8rem' }}
           >
             <Download size={14} />
             Point Cloud (.PLY)
-          </a>
+          </button>
         )}
 
         {outputs.confidence_ply && (
-          <a
-            href={assetUrl(outputs.confidence_ply)}
-            download
+          <button
+            type="button"
+            onClick={() => download(outputs.scaled_confidence_ply || outputs.confidence_ply, 'confidence-cloud.ply')}
             className="btn btn-secondary"
-            style={{ textDecoration: 'none', fontSize: '0.8rem' }}
+            style={{ fontSize: '0.8rem' }}
           >
             <Download size={14} />
-            Confidence Cloud (.PLY)
-          </a>
+            Density Support Cloud (.PLY)
+          </button>
         )}
 
         {outputs.metrics_json && (
-          <a
-            href={assetUrl(outputs.metrics_json)}
-            target="_blank"
-            rel="noreferrer"
+          <button
+            type="button"
+            onClick={() => download(outputs.metrics_json, 'metrics.json')}
             className="btn btn-secondary"
-            style={{ textDecoration: 'none', fontSize: '0.8rem' }}
+            style={{ fontSize: '0.8rem' }}
           >
             <FileText size={14} />
             metrics.json
-          </a>
+          </button>
         )}
       </div>
     </div>

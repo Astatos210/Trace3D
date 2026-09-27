@@ -123,7 +123,7 @@ export const MetricCalibration: React.FC<MetricCalibrationProps> = ({
           Geodetic Accuracy Standards Disclaimer
         </div>
         <p>
-          Single-pass consumer drone GPS provides approximate georeferencing (±2 to 5m RMSE).
+          GPS alignment transforms the model into local ENU coordinates and remains approximate (typically ±2 to 5m RMSE).
           <strong style={{ color: 'var(--text-primary)' }}> Centimeter-level accuracy is never claimed</strong> without RTK, PPK, or surveyed Ground Control Points (GCPs). Use the 2-point known-distance fallback for exact metric scale calibration.
         </p>
       </div>

@@ -27,7 +27,7 @@ class CalibrateRequest(BaseModel):
 @router.post("/{job_id}/calibrate")
 def calibrate_job_endpoint(job_id: str, request: CalibrateRequest):
     """
-    Applies metric scale calibration to a completed job.
+    Applies metric scale or local ENU georeferencing to a completed job.
     Supports 2-point known-distance scale calibration fallback,
     or GPS trajectory alignment.
     """

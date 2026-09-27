@@ -11,7 +11,7 @@ const STAGES = [
   { key: 'SPARSE_RECONSTRUCTION', label: '2. COLMAP Sparse Mapping' },
   { key: 'DENSE_RECONSTRUCTION', label: '3. COLMAP Dense Stereo' },
   { key: 'OPEN3D_PROCESSING', label: '4. Open3D Filtering & Meshing' },
-  { key: 'CONFIDENCE_SCORING', label: '5. Confidence Layer' }
+  { key: 'CONFIDENCE_SCORING', label: '5. Density Support Heuristic' }
 ];
 
 export const JobProgress: React.FC<JobProgressProps> = ({ job }) => {

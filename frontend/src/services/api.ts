@@ -37,14 +37,15 @@ export interface JobStatus {
     metrics_json?: string;
     scaled_mesh_ply?: string;
     scaled_mesh_obj?: string;
+    scaled_mesh_glb?: string;
     scaled_point_cloud?: string;
+    scaled_confidence_ply?: string;
   };
 }
 
 export interface SampleVideo {
   name: string;
   size_mb: number;
-  path: string;
 }
 
 export interface CalibrationResult {
@@ -124,4 +125,15 @@ export async function calibrateJob(jobId: string, payload: any): Promise<{ calib
     throw new Error(err.detail || 'Calibration failed');
   }
   return res.json();
+}
+
+export async function downloadArtifact(path: string, filename: string): Promise<void> {
+  const res = await fetch(assetUrl(path));
+  if (!res.ok) throw new Error(`Download failed: ${res.statusText}`);
+  const url = URL.createObjectURL(await res.blob());
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
 }

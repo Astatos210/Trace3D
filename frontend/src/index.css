@@ -158,3 +158,13 @@ input:focus, select:focus {
 input[type="range"] {
   accent-color: var(--accent-blue);
 }
+
+@media (max-width: 960px) {
+  .dashboard-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .dashboard-viewer {
+    position: static !important;
+  }
+}

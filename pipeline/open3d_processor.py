@@ -2,7 +2,7 @@ import os
 import json
 import logging
 from pathlib import Path
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, List, Optional, Tuple
 import open3d as o3d
 import numpy as np
 
@@ -178,40 +178,121 @@ def process_point_cloud(
     return metrics
 
 
-def apply_metric_scale_to_outputs(output_dir: str, scale_factor: float) -> Dict[str, Any]:
+def _transform_ascii_ply(source: Path, destination: Path, matrix: np.ndarray, translation: np.ndarray):
+    lines = source.read_text(encoding="utf-8").splitlines()
+    try:
+        end_header = lines.index("end_header")
+    except ValueError as exc:
+        raise ValueError(f"Invalid ASCII PLY header: {source}") from exc
+    if not any(line == "format ascii 1.0" for line in lines[:end_header]):
+        raise ValueError(f"Only ASCII PLY files can be calibrated: {source}")
+    vertex_count = 0
+    properties = []
+    in_vertices = False
+    for line in lines[:end_header]:
+        if line.startswith("element "):
+            fields = line.split()
+            in_vertices = len(fields) == 3 and fields[1] == "vertex"
+            if in_vertices:
+                vertex_count = int(fields[2])
+                properties = []
+        elif in_vertices and line.startswith("property "):
+            properties.append(line.split()[-1])
+    xyz_indices = [properties.index(axis) for axis in ("x", "y", "z")]
+    normal_indices = ([properties.index(axis) for axis in ("nx", "ny", "nz")]
+                      if all(axis in properties for axis in ("nx", "ny", "nz")) else None)
+    first_vertex = end_header + 1
+    for index in range(first_vertex, first_vertex + vertex_count):
+        fields = lines[index].split()
+        point = np.array([float(fields[i]) for i in xyz_indices])
+        point = matrix @ point + translation
+        for col, value in zip(xyz_indices, point):
+            fields[col] = f"{value:.9g}"
+        if normal_indices:
+            normal = matrix @ np.array([float(fields[i]) for i in normal_indices])
+            length = float(np.linalg.norm(normal))
+            if length > 1e-12:
+                normal /= length
+            for col, value in zip(normal_indices, normal):
+                fields[col] = f"{value:.9g}"
+        lines[index] = " ".join(fields)
+    destination.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def apply_metric_scale_to_outputs(
+    output_dir: str,
+    scale_factor: float,
+    rotation: Optional[List[List[float]]] = None,
+    translation: Optional[List[float]] = None,
+) -> Dict[str, Any]:
     """
     Scales the point cloud and triangular mesh by scale_factor so they are physically 'up to scale' in meters.
     Generates scaled_point_cloud.ply and scaled_mesh.ply / scaled_mesh.obj.
     """
     out_dir = Path(output_dir).resolve()
-    if scale_factor <= 0 or abs(scale_factor - 1.0) < 1e-6:
-        return {}
+    if not np.isfinite(scale_factor) or scale_factor <= 0:
+        raise ValueError("Scale factor must be a finite positive number.")
 
     scaled_files = {}
+    rot = np.asarray(rotation if rotation is not None else np.eye(3), dtype=np.float64)
+    trans = np.asarray(translation if translation is not None else [0.0, 0.0, 0.0], dtype=np.float64)
+    if rot.shape != (3, 3) or trans.shape != (3,) or not np.isfinite(rot).all() or not np.isfinite(trans).all():
+        raise ValueError("Invalid similarity transform.")
+    matrix = scale_factor * rot
 
-    # Scale Point Cloud
-    ply_path = out_dir / "point_cloud.ply"
-    if ply_path.exists():
-        pcd = o3d.io.read_point_cloud(str(ply_path))
-        pcd.scale(scale_factor, center=(0, 0, 0))
-        scaled_ply = out_dir / "scaled_point_cloud.ply"
-        o3d.io.write_point_cloud(str(scaled_ply), pcd, write_ascii=True)
-        scaled_files["scaled_point_cloud"] = str(scaled_ply)
+    for source_name, target_name, key in (
+        ("point_cloud.ply", "scaled_point_cloud.ply", "scaled_point_cloud"),
+        ("mesh.ply", "scaled_mesh.ply", "scaled_mesh_ply"),
+        ("confidence_pcd.ply", "scaled_confidence_pcd.ply", "scaled_confidence_ply"),
+    ):
+        source = out_dir / source_name
+        if source.is_file():
+            target = out_dir / target_name
+            _transform_ascii_ply(source, target, matrix, trans)
+            scaled_files[key] = str(target)
 
-    # Scale Triangular Mesh
-    mesh_path = out_dir / "mesh.ply"
-    if mesh_path.exists():
-        mesh = o3d.io.read_triangle_mesh(str(mesh_path))
-        if len(mesh.triangles) > 0:
-            mesh.scale(scale_factor, center=(0, 0, 0))
-            scaled_mesh_ply = out_dir / "scaled_mesh.ply"
-            scaled_mesh_obj = out_dir / "scaled_mesh.obj"
-            o3d.io.write_triangle_mesh(str(scaled_mesh_ply), mesh, write_ascii=True)
-            try:
-                o3d.io.write_triangle_mesh(str(scaled_mesh_obj), mesh, write_ascii=True)
-            except Exception:
-                pass
-            scaled_files["scaled_mesh_ply"] = str(scaled_mesh_ply)
-            scaled_files["scaled_mesh_obj"] = str(scaled_mesh_obj)
+    transformed_cloud = out_dir / "scaled_point_cloud.ply"
+    if transformed_cloud.is_file():
+        cloud = o3d.io.read_point_cloud(str(transformed_cloud))
+        if len(cloud.points):
+            bbox = cloud.get_axis_aligned_bounding_box()
+            scaled_files["bounding_box"] = {
+                "min": [round(float(v), 3) for v in bbox.get_min_bound()],
+                "max": [round(float(v), 3) for v in bbox.get_max_bound()],
+                "extent": [round(float(v), 3) for v in bbox.get_extent()],
+            }
+
+    obj_path = out_dir / "mesh.obj"
+    if obj_path.is_file():
+        transformed_obj = out_dir / "scaled_mesh.obj"
+        with obj_path.open("r", encoding="utf-8") as src, transformed_obj.open("w", encoding="utf-8") as dst:
+            for line in src:
+                fields = line.split()
+                if fields and fields[0] == "v" and len(fields) >= 4:
+                    point = matrix @ np.asarray([float(v) for v in fields[1:4]]) + trans
+                    line = "v " + " ".join(f"{v:.9g}" for v in point) + "\n"
+                elif fields and fields[0] == "vn" and len(fields) >= 4:
+                    normal = rot @ np.asarray([float(v) for v in fields[1:4]])
+                    length = float(np.linalg.norm(normal))
+                    if length > 1e-12:
+                        normal /= length
+                    line = "vn " + " ".join(f"{v:.9g}" for v in normal) + "\n"
+                dst.write(line)
+        scaled_files["scaled_mesh_obj"] = str(transformed_obj)
+
+    glb_path = out_dir / "mesh.glb"
+    if glb_path.is_file():
+        try:
+            mesh = o3d.io.read_triangle_mesh(str(glb_path))
+            if len(mesh.vertices):
+                transform = np.eye(4)
+                transform[:3, :3] = matrix
+                transform[:3, 3] = trans
+                mesh.transform(transform)
+                transformed_glb = out_dir / "scaled_mesh.glb"
+                o3d.io.write_triangle_mesh(str(transformed_glb), mesh)
+                scaled_files["scaled_mesh_glb"] = str(transformed_glb)
+        except Exception as exc:
+            logger.warning("Could not generate calibrated GLB: %s", exc)
 
     return scaled_files

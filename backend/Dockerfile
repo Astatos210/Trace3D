@@ -19,5 +19,6 @@ COPY backend/ backend/
 COPY pipeline/ pipeline/
 
 ENV PYTHONPATH=/app
+ENV DEBUG=false
 
 CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "5173"]

@@ -46,6 +46,11 @@ export const Viewer3D: React.FC<Viewer3DProps> = ({
     triangleCount: number;
     distance: number | null;
   }>({ vertexCount: 0, triangleCount: 0, distance: null });
+  const calibratedSource = [meshPlyUrl, confidencePlyUrl, plyUrl]
+    .some((url) => Boolean(url?.split('/').pop()?.startsWith('scaled_')));
+  const displayScale = applyMetricScale && scaleFactor > 0
+    ? (calibratedSource ? 1 : scaleFactor)
+    : (calibratedSource && scaleFactor > 0 ? 1 / scaleFactor : 1);
 
   // Scene references
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -63,6 +68,8 @@ export const Viewer3D: React.FC<Viewer3DProps> = ({
     let headerEnded = false;
     let vertexCount = 0;
     let faceCount = 0;
+    let currentElement = '';
+    let vertexProperties: string[] = [];
     const posList: number[] = [];
     const rgbList: number[] = [];
     const confColorList: number[] = [];
@@ -76,10 +83,13 @@ export const Viewer3D: React.FC<Viewer3DProps> = ({
       if (!line) continue;
 
       if (!headerEnded) {
-        if (line.startsWith('element vertex')) {
-          vertexCount = parseInt(line.split(/\s+/)[2], 10);
-        } else if (line.startsWith('element face')) {
-          faceCount = parseInt(line.split(/\s+/)[2], 10);
+        if (line.startsWith('element ')) {
+          const [, element, count] = line.split(/\s+/);
+          currentElement = element;
+          if (element === 'vertex') vertexCount = parseInt(count, 10);
+          if (element === 'face') faceCount = parseInt(count, 10);
+        } else if (line.startsWith('property ') && currentElement === 'vertex') {
+          vertexProperties.push(line.split(/\s+/).pop() || '');
         } else if (line === 'end_header') {
           headerEnded = true;
         }
@@ -90,31 +100,35 @@ export const Viewer3D: React.FC<Viewer3DProps> = ({
       if (vertexLinesRead < vertexCount) {
         const parts = line.split(/\s+/);
         if (parts.length >= 3) {
-          const x = parseFloat(parts[0]);
-          const y = parseFloat(parts[1]);
-          const z = parseFloat(parts[2]);
+          const x = parseFloat(parts[vertexProperties.indexOf('x')]);
+          const y = parseFloat(parts[vertexProperties.indexOf('y')]);
+          const z = parseFloat(parts[vertexProperties.indexOf('z')]);
+          if (![x, y, z].every(Number.isFinite)) {
+            throw new Error(`Invalid PLY vertex at row ${vertexLinesRead + 1}`);
+          }
           posList.push(x, y, z);
 
-          // RGB colors
+          // Resolve color channels by PLY property names; Open3D writes normals before RGB.
           let r = 0.8, g = 0.8, b = 0.8;
-          if (parts.length >= 6 && !isNaN(parseFloat(parts[3])) && !isNaN(parseFloat(parts[4])) && !isNaN(parseFloat(parts[5]))) {
-            r = Math.min(1.0, Math.max(0.0, parseFloat(parts[3]) / 255.0));
-            g = Math.min(1.0, Math.max(0.0, parseFloat(parts[4]) / 255.0));
-            b = Math.min(1.0, Math.max(0.0, parseFloat(parts[5]) / 255.0));
+          const colorIndices = ['red', 'green', 'blue'].map((name) => vertexProperties.indexOf(name));
+          if (colorIndices.every((index) => index >= 0)) {
+            const channels = colorIndices.map((index) => parseFloat(parts[index]));
+            const normalize = (value: number) => Math.min(1, Math.max(0, value > 1 ? value / 255 : value));
+            [r, g, b] = channels.map(normalize);
           }
           rgbList.push(r, g, b);
 
-          // Confidence score
-          const conf = parts.length >= 7 ? parseFloat(parts[6]) : 0.85;
+          const confidenceIndex = vertexProperties.indexOf('confidence');
+          const conf = confidenceIndex >= 0 ? parseFloat(parts[confidenceIndex]) : 0.5;
           confList.push(conf);
 
           // Confidence Heatmap Color
           if (conf >= 0.8) {
-            confColorList.push(0.02, 0.85, 0.2); // Green (Multi-view verified)
+            confColorList.push(0.02, 0.85, 0.2); // Dense neighborhood heuristic
           } else if (conf >= 0.4) {
-            confColorList.push(1.0, 0.8, 0.1);  // Yellow (Sparse support)
+            confColorList.push(1.0, 0.8, 0.1);  // Moderate neighborhood density
           } else {
-            confColorList.push(0.95, 0.2, 0.15); // Red/Orange (Monocular inferred)
+            confColorList.push(0.95, 0.2, 0.15); // Sparse neighborhood density
           }
 
           vertexLinesRead++;
@@ -126,15 +140,17 @@ export const Viewer3D: React.FC<Viewer3DProps> = ({
       const parts = line.split(/\s+/);
       const faceVertices = parseInt(parts[0], 10);
       if (faceVertices === 3 && parts.length >= 4) {
-        indexList.push(parseInt(parts[1], 10), parseInt(parts[2], 10), parseInt(parts[3], 10));
+        const face = parts.slice(1, 4).map(Number);
+        if (face.every((index) => Number.isInteger(index) && index >= 0 && index < vertexCount)) indexList.push(...face);
       } else if (faceVertices === 4 && parts.length >= 5) {
         // Quad face split into two triangles
         const i0 = parseInt(parts[1], 10);
         const i1 = parseInt(parts[2], 10);
         const i2 = parseInt(parts[3], 10);
         const i3 = parseInt(parts[4], 10);
-        indexList.push(i0, i1, i2);
-        indexList.push(i0, i2, i3);
+        if ([i0, i1, i2, i3].every((index) => Number.isInteger(index) && index >= 0 && index < vertexCount)) {
+          indexList.push(i0, i1, i2, i0, i2, i3);
+        }
       }
     }
 
@@ -182,7 +198,9 @@ export const Viewer3D: React.FC<Viewer3DProps> = ({
   // Fetch and parse PLY (mesh or point cloud)
   useEffect(() => {
     // Prefer triangular mesh PLY, then confidence point cloud, then raw point cloud
-    const targetUrl = assetUrl(meshPlyUrl || confidencePlyUrl || plyUrl);
+    const targetUrl = assetUrl(shadingStyle === 'confidence'
+      ? confidencePlyUrl || meshPlyUrl || plyUrl
+      : meshPlyUrl || confidencePlyUrl || plyUrl);
     if (!targetUrl) return;
 
     setLoading(true);
@@ -213,7 +231,7 @@ export const Viewer3D: React.FC<Viewer3DProps> = ({
         console.error('Failed to load 3D model:', err);
         setLoading(false);
       });
-  }, [meshPlyUrl, confidencePlyUrl, plyUrl]);
+  }, [meshPlyUrl, confidencePlyUrl, plyUrl, shadingStyle]);
 
   // Three.js scene setup and rendering
   useEffect(() => {
@@ -247,7 +265,9 @@ export const Viewer3D: React.FC<Viewer3DProps> = ({
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
-    container.replaceChildren(renderer.domElement);
+    // Keep React-owned loading/HUD overlays intact; replaceChildren desynchronizes
+    // React's child list and causes insertBefore errors on the first job update.
+    container.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
     // Group for the 3D model (mesh and points)
@@ -412,7 +432,7 @@ export const Viewer3D: React.FC<Viewer3DProps> = ({
     }
 
     // Apply Metric Scale to the 3D model
-    const currentScale = (applyMetricScale && scaleFactor > 0) ? scaleFactor : 1.0;
+    const currentScale = displayScale;
     group.scale.set(currentScale, currentScale, currentScale);
 
     // Update Ground Reference Grid
@@ -449,7 +469,7 @@ export const Viewer3D: React.FC<Viewer3DProps> = ({
       );
       cameraRef.current.lookAt(sCenter);
     }
-  }, [parsedData, viewMode, shadingStyle, pointSize, applyMetricScale, scaleFactor]);
+  }, [parsedData, viewMode, shadingStyle, pointSize, applyMetricScale, scaleFactor, displayScale]);
 
   // Click Raycaster for 2-Point Picking on Mesh Surface or Point Cloud
   const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -503,8 +523,9 @@ export const Viewer3D: React.FC<Viewer3DProps> = ({
       const rawDist = selectedPoints[0].distanceTo(selectedPoints[1]);
       setStats((s) => ({ ...s, distance: rawDist }));
 
-      // Unscale coordinates back to model space when triggering calibration callback
-      const currentScale = (applyMetricScale && scaleFactor > 0) ? scaleFactor : 1.0;
+      // Calibrated artifacts are already in the displayed metric/ENU frame. The backend
+      // accounts for the current scale when a later two-point calibration is submitted.
+      const currentScale = calibratedSource ? 1.0 : displayScale;
       const p1Model = selectedPoints[0].clone().divideScalar(currentScale);
       const p2Model = selectedPoints[1].clone().divideScalar(currentScale);
 
@@ -515,11 +536,11 @@ export const Viewer3D: React.FC<Viewer3DProps> = ({
     } else {
       setStats((s) => ({ ...s, distance: null }));
     }
-  }, [selectedPoints, scaleFactor, applyMetricScale]);
+  }, [selectedPoints, scaleFactor, applyMetricScale, calibratedSource, displayScale]);
 
   const handleResetCamera = () => {
     if (cameraRef.current && parsedData) {
-      const currentScale = (applyMetricScale && scaleFactor > 0) ? scaleFactor : 1.0;
+      const currentScale = displayScale;
       const c = parsedData.center.clone().multiplyScalar(currentScale);
       const e = parsedData.extent * currentScale;
       cameraRef.current.position.set(c.x + e * 0.65, c.y + e * 0.6, c.z + e * 0.85);
@@ -608,7 +629,7 @@ export const Viewer3D: React.FC<Viewer3DProps> = ({
 
         {/* Action Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          {viewMode === 'mesh_surface' && (
+          {(viewMode === 'mesh_surface' || viewMode === 'point_cloud') && (
             <select
               value={shadingStyle}
               onChange={(e) => setShadingStyle(e.target.value as any)}
@@ -616,7 +637,7 @@ export const Viewer3D: React.FC<Viewer3DProps> = ({
               title="Mesh Shading Style"
             >
               <option value="textured">RGB Texture</option>
-              <option value="confidence">Confidence Heatmap</option>
+              <option value="confidence">Density Support Heatmap</option>
               <option value="clay">Clay Shaded</option>
             </select>
           )}
@@ -710,18 +731,18 @@ export const Viewer3D: React.FC<Viewer3DProps> = ({
             zIndex: 5,
             pointerEvents: 'none'
           }}>
-            <div style={{ fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.1rem' }}>GEOMETRIC CONFIDENCE</div>
+            <div style={{ fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.1rem' }}>LOCAL DENSITY SUPPORT</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#06d6a0' }} />
-              <span>High (≥ 0.8): Multi-View Stereo Validated</span>
+              <span>Dense neighborhood (≥ 0.8): heuristic only</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ffd166' }} />
-              <span>Medium (0.4 - 0.8): Sparse Visual Match</span>
+              <span>Moderate neighborhood (0.4 - 0.8)</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ef476f' }} />
-              <span>Low (&lt; 0.4): Monocular Depth Filled</span>
+              <span>Sparse neighborhood (&lt; 0.4): heuristic only</span>
             </div>
           </div>
         )}

@@ -14,7 +14,7 @@ def confidence_to_rgb(confidence: float) -> Tuple[int, int, int]:
     Maps confidence score in [0, 1] to RGB visualization color:
     - High confidence (0.8 - 1.0): Green (0, 220, 60)
     - Medium confidence (0.4 - 0.8): Yellow/Amber (240, 200, 20)
-    - Inferred/Low confidence (0.0 - 0.4): Red/Orange (230, 60, 40)
+    - Sparse local neighborhood (0.0 - 0.4): Red/Orange (230, 60, 40)
     """
     c = np.clip(confidence, 0.0, 1.0)
     if c >= 0.8:
@@ -66,20 +66,18 @@ def align_relative_depth_to_metric(
 def compute_point_cloud_confidence(
     input_ply: str,
     output_dir: str,
-    simulate_monocular_fill: bool = True
+    simulate_monocular_fill: bool = False
 ) -> Dict[str, Any]:
     """
     Evaluates geometry confidence for each 3D point and exports a confidence-colored point cloud.
 
-    Classical multi-view stereo points receive high confidence scores based on local density
-    and spatial consistency. Sparse or occluded void regions filled via monocular depth inference
-    are assigned low confidence scores and visually distinguished.
+    Scores local point density only. It does not perform monocular inference or prove multi-view
+    validation because camera visibility and stereo residuals are not available here.
 
     Args:
         input_ply: Path to input point cloud PLY.
         output_dir: Destination directory for confidence PLY and metadata.
-        simulate_monocular_fill: If true, synthesizes inferred points in sparse void areas
-                                 to demonstrate clear confidence distinction.
+        simulate_monocular_fill: Retained for compatibility; synthetic geometry is never added.
 
     Returns:
         Confidence statistics and output file paths.
@@ -94,12 +92,12 @@ def compute_point_cloud_confidence(
     if len(points) == 0:
         raise ValueError(f"No points in {input_ply} to evaluate confidence.")
 
-    # Compute local neighborhood density via KDTree to measure MVS reliability
+    # Compute local neighborhood density as a support heuristic, not MVS reliability.
     pcd_tree = o3d.geometry.KDTreeFlann(pcd)
     num_pts = len(points)
 
     # Estimate average nearest-neighbor distance
-    sample_indices = np.random.choice(num_pts, min(num_pts, 500), replace=False)
+    sample_indices = np.linspace(0, num_pts - 1, min(num_pts, 500), dtype=int)
     nn_distances = []
     for idx in sample_indices:
         [k, idxs, dists] = pcd_tree.search_knn_vector_3d(points[idx], 6)
@@ -108,41 +106,17 @@ def compute_point_cloud_confidence(
     avg_dist = float(np.median(nn_distances)) if nn_distances else 0.1
     search_radius = max(avg_dist * 2.5, 0.05)
 
-    # Assign confidence scores based on multi-view local density
+    # Assign scores from neighborhood density only.
     confidences = []
     for i in range(num_pts):
         [k, idxs, dists] = pcd_tree.search_radius_vector_3d(points[i], search_radius)
-        # More local neighbors = higher multi-view geometric consistency
-        # Saturate score between 0.65 and 0.98 for real MVS points
-        raw_score = 0.65 + 0.33 * (min(k, 30) / 30.0)
+        raw_score = min(k, 30) / 30.0
         confidences.append(float(raw_score))
 
     confidences = np.array(confidences, dtype=np.float32)
 
-    # If monocular fill is requested and sparse areas exist, infer fill-in points
-    inferred_points = []
-    inferred_confidences = []
-    if simulate_monocular_fill and num_pts >= 50:
-        # Find boundary/low-density points
-        low_density_mask = confidences < np.quantile(confidences, 0.15)
-        sparse_pts = points[low_density_mask]
-        if len(sparse_pts) > 0:
-            # Generate small number of monocular depth filled points in void regions
-            num_fill = min(len(sparse_pts) * 2, 2000)
-            noise = np.random.normal(0, search_radius * 0.8, size=(num_fill, 3))
-            sampled_anchors = sparse_pts[np.random.choice(len(sparse_pts), num_fill, replace=True)]
-            inferred = sampled_anchors + noise
-            # Low confidence score for monocularly inferred points: 0.15 - 0.35
-            inf_conf = np.random.uniform(0.15, 0.35, size=num_fill).astype(np.float32)
-            inferred_points.append(inferred)
-            inferred_confidences.append(inf_conf)
-
-    if inferred_points:
-        all_points = np.vstack([points] + inferred_points)
-        all_confidences = np.concatenate([confidences] + inferred_confidences)
-    else:
-        all_points = points
-        all_confidences = confidences
+    all_points = points
+    all_confidences = confidences
 
     # Assign RGB colors based on confidence
     colors = np.zeros((len(all_points), 3), dtype=np.uint8)
@@ -174,15 +148,16 @@ def compute_point_cloud_confidence(
         "total_points": len(all_points),
         "high_confidence_count": high_conf_count,
         "medium_confidence_count": med_conf_count,
-        "low_confidence_inferred_count": low_conf_count,
+        "low_confidence_count": low_conf_count,
         "high_confidence_pct": round(high_conf_count / len(all_points) * 100, 2),
         "medium_confidence_pct": round(med_conf_count / len(all_points) * 100, 2),
-        "low_confidence_inferred_pct": round(low_conf_count / len(all_points) * 100, 2),
+        "low_confidence_pct": round(low_conf_count / len(all_points) * 100, 2),
+        "confidence_method": "local_neighborhood_density_heuristic",
         "confidence_file": str(out_ply),
         "legend": {
-            "green": "High Confidence (≥ 0.8): Multi-view stereo validated",
-            "yellow": "Medium Confidence (0.4 - 0.8): Sparse visual support",
-            "orange_red": "Low/Inferred Confidence (< 0.4): Monocular depth fill-in"
+            "green": "Dense local neighborhood (≥ 0.8); heuristic only",
+            "yellow": "Moderate local neighborhood (0.4 - 0.8)",
+            "orange_red": "Sparse local neighborhood (< 0.4); heuristic only"
         }
     }
 

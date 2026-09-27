@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.app.config import settings
@@ -24,11 +25,21 @@ app = FastAPI(
 # CORS configuration for development with Vite frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=settings.allowed_origins,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def enforce_upload_request_limit(request, call_next):
+    """Reject oversized video requests before FastAPI parses the multipart body."""
+    if request.url.path == "/api/jobs" and request.method == "POST":
+        length = request.headers.get("content-length")
+        if length and int(length) > settings.max_upload_bytes + 4 * 1024 * 1024:
+            return JSONResponse({"detail": "Request exceeds the video upload limit."}, status_code=413)
+    return await call_next(request)
 
 # Mount endpoints
 app.include_router(health_router, prefix="/api")
@@ -37,7 +48,6 @@ app.include_router(calibration_router, prefix="/api")
 
 # Mount jobs directory as static files for downloading models, frames, and metrics
 app.mount("/jobs", StaticFiles(directory=str(settings.jobs_dir)), name="jobs")
-app.mount("/data", StaticFiles(directory=str(settings.data_dir)), name="data")
 
 
 @app.get("/")

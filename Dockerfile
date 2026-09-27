@@ -38,7 +38,8 @@ COPY --from=frontend_build /build/dist/ frontend_dist/
 
 ENV PYTHONPATH=/app \
     HOST=0.0.0.0 \
-    PORT=7860
+    PORT=7860 \
+    DEBUG=false
 
 # HF Spaces runs containers as a non-root user; make all writable paths usable.
 RUN mkdir -p /app/data/uploads /app/data/samples /app/jobs \
