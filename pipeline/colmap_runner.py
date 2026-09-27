@@ -121,6 +121,11 @@ def run_colmap_command(args: List[str], cwd: Optional[str] = None) -> str:
     # does not exist, Qt will fall back to its built-in offscreen support.
     env["QT_QPA_PLATFORM_PLUGIN_PATH"] = _find_offscreen_plugin_path()
     env["QT_PLUGIN_PATH"] = ""
+     # Force software OpenGL rendering so COLMAP's OpenGL context creation
+    # (opengl_utils.cc) does not abort in headless containers without a GPU.
+    env["LIBGL_ALWAYS_SOFTWARE"] = "1"
+    env["MESA_GL_VERSION_OVERRIDE"] = "3.3"
+    env["EGL_PLATFORM"] = "surfaceless"
 
     process = subprocess.run(
         args,
@@ -204,27 +209,33 @@ def run_sparse_reconstruction(
             "To preview the frontend UI without COLMAP, enable Mock Mode."
         )
 
-    # 1. Feature extraction
+    # 1. Feature extraction(CPU-only: disables GPU/OpenGL paths that abort in headless containers)
     run_colmap_command([
         exe, "feature_extractor",
         "--database_path", str(database_path),
         "--image_path", str(images_path),
         "--ImageReader.camera_model", "SIMPLE_RADIAL",
-        "--ImageReader.single_camera", "1"
+         "--ImageReader.single_camera", "1",
+        "--SiftExtraction.use_gpu", "0",
+        "--ExhaustiveMatching.use_gpu", "0",
+        "--SequentialMatching.use_gpu", "0"
     ])
 
     # 2. Matching (Sequential matcher is ideal for drone video footage)
     run_colmap_command([
         exe, "sequential_matcher",
-        "--database_path", str(database_path)
+         "--database_path", str(database_path),
+        "--SequentialMatching.use_gpu", "0"
     ])
 
-    # 3. Sparse Mapping
+    # 3. Sparse Mapping(CPU-only to avoid OpenGL context init in headless env)
     run_colmap_command([
         exe, "mapper",
         "--database_path", str(database_path),
         "--image_path", str(images_path),
-        "--output_path", str(sparse_out_dir)
+        "--output_path", str(sparse_out_dir),
+        "--Mapper.ba_global_function_use_gpu", "0",
+        "--Mapper.geometric_verification_use_gpu", "0"
     ])
 
     # In COLMAP, mapper creates sub-models (sparse/0, sparse/1, etc.) when it
