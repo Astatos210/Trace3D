@@ -7,6 +7,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     libglu1-mesa \
     libglib2.0-0 \
+    libegl1 \
+    libglx-mesa0 \
+    libosmesa6 \
+    libgbm1 \
+    mesa-utils \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
