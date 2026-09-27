@@ -121,12 +121,23 @@ def run_colmap_command(args: List[str], cwd: Optional[str] = None) -> str:
     # does not exist, Qt will fall back to its built-in offscreen support.
     env["QT_QPA_PLATFORM_PLUGIN_PATH"] = _find_offscreen_plugin_path()
     env["QT_PLUGIN_PATH"] = ""
-     # Force software OpenGL rendering so COLMAP's OpenGL context creation
-    # (opengl_utils.cc) does not abort in headless containers without a GPU.
+   
+    # COLMAP's opengl_utils.cc calls context_.create() at startup to validate
+    # the OpenGL context. In headless containers this fails with:
+    #   "Check failed: context_.create()"
+    #   "This application failed to start because no Qt platform plugin could be initialized"
+    #
+    # Solution: force software OpenGL via Mesa's OSMesa so COLMAP can create
+    # a headless GL context. The libosmesa6 library (installed in the Dockerfile)
+    # provides this. LIBGL_ALWAYS_SOFTWARE=1 forces llvmpipe/software rendering.
     env["LIBGL_ALWAYS_SOFTWARE"] = "1"
-    env["MESA_GL_VERSION_OVERRIDE"] = "3.3"
-    env["EGL_PLATFORM"] = "surfaceless"
+    env["GALLIUM_DRIVER"] = "llvmpipe"
+    env["MESAYUV_ALWAYS_YUV"] = "1"
+    # Suppress Qt's XDG_RUNTIME_DIR warning (harmless but noisy in logs).
+    env["XDG_RUNTIME_DIR"] = "/tmp/runtime-root"
+    os.makedirs("/tmp/runtime-root", exist_ok=True) if False else None  # no-op; container must provide this
 
+   
     process = subprocess.run(
         args,
         cwd=cwd,
@@ -217,8 +228,7 @@ def run_sparse_reconstruction(
         "--ImageReader.camera_model", "SIMPLE_RADIAL",
          "--ImageReader.single_camera", "1",
         "--SiftExtraction.use_gpu", "0",
-        "--ExhaustiveMatching.use_gpu", "0",
-        "--SequentialMatching.use_gpu", "0"
+       
     ])
 
     # 2. Matching (Sequential matcher is ideal for drone video footage)
@@ -234,8 +244,7 @@ def run_sparse_reconstruction(
         "--database_path", str(database_path),
         "--image_path", str(images_path),
         "--output_path", str(sparse_out_dir),
-        "--Mapper.ba_global_function_use_gpu", "0",
-        "--Mapper.geometric_verification_use_gpu", "0"
+       
     ])
 
     # In COLMAP, mapper creates sub-models (sparse/0, sparse/1, etc.) when it
