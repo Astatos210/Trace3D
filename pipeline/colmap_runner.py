@@ -121,7 +121,16 @@ def run_colmap_command(args: List[str], cwd: Optional[str] = None) -> str:
     # does not exist, Qt will fall back to its built-in offscreen support.
     env["QT_QPA_PLATFORM_PLUGIN_PATH"] = _find_offscreen_plugin_path()
     env["QT_PLUGIN_PATH"] = ""
-   
+
+    # Prevent Qt from trying to connect to a display server or D-Bus session,
+    # which causes colmap to hang indefinitely in headless containers.
+    env["DISPLAY"] = ""
+    env["QT_QPA_GRAPHICSSYSTEM"] = "native"
+    env["QT forbids_`_dcop"] = "1"
+    # DBUS_SESSION_BUS_ADDRESS must not be set or Qt may block on it.
+    env.pop("DBUS_SESSION_BUS_ADDRESS", None)
+    env.pop("DBUS_SYSTEM_BUS_ADDRESS", None)
+    
     # COLMAP's opengl_utils.cc calls context_.create() at startup to validate
     # the OpenGL context. In headless containers this fails with:
     #   "Check failed: context_.create()"
@@ -132,20 +141,35 @@ def run_colmap_command(args: List[str], cwd: Optional[str] = None) -> str:
     # provides this. LIBGL_ALWAYS_SOFTWARE=1 forces llvmpipe/software rendering.
     env["LIBGL_ALWAYS_SOFTWARE"] = "1"
     env["GALLIUM_DRIVER"] = "llvmpipe"
-    env["MESAYUV_ALWAYS_YUV"] = "1"
+   env["MESA_GL_VERSION_OVERRIDE"] = "3.3"
+
     # Suppress Qt's XDG_RUNTIME_DIR warning (harmless but noisy in logs).
     env["XDG_RUNTIME_DIR"] = "/tmp/runtime-root"
     os.makedirs("/tmp/runtime-root", exist_ok=True) if False else None  # no-op; container must provide this
 
-   
-    process = subprocess.run(
-        args,
-        cwd=cwd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        env=env
-    )
+   # COLMAP can hang indefinitely in headless environments (e.g. waiting on
+    # D-Bus, X11, or a GL context timeout). Impose a generous wall-clock cap
+    # so the pipeline fails fast rather than stalling a worker thread forever.
+    try:
+        process = subprocess.run(
+            args,
+            cwd=cwd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            env=env,
+            timeout=600  # 10 minutes; COLMAP feature extraction on many frames can be slow
+        )
+    except subprocess.TimeoutExpired:
+        logger.error(
+            "COLMAP command timed out after 600s: %s",
+            " ".join(args)
+        )
+        raise ColmapExecutionError(
+            f"COLMAP command timed out after 600 seconds: {' '.join(args)}\n"
+            "This usually means Qt is blocked waiting for a display server or D-Bus.\n"
+            "Check that QT_QPA_PLATFORM=offscreen and DBUS_SESSION_BUS_ADDRESS is unset."
+        )
     if process.returncode != 0:
         error_msg = f"COLMAP command failed with code {process.returncode}:\n{process.stderr}\n{process.stdout}"
         logger.error(error_msg)
