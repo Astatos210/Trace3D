@@ -1,3 +1,5 @@
+# Single-container build for Hugging Face Spaces (free tier: 2 vCPU, 16 GB RAM).
+# Builds the React frontend, then serves it from FastAPI alongside the full
 # COLMAP + Open3D reconstruction pipeline. One port, one process, zero cost.
 
 # ---- Stage 1: build the React frontend ----
@@ -28,6 +30,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
+# Prevent Qt plugin conflicts between opencv-contrib-python's bundled Qt
+# plugins and COLMAP's Qt. Without this, COLMAP can abort with messages like:
+#   "Could not load the Qt platform plugin 'xcb'"
+#   or plugin version mismatches triggering an abort.
+ENV QT_QPA_PLATFORM=offscreen
+ENV QT_QPA_PLATFORM_PLUGIN_PATH=
+ENV QT_PLUGIN_PATH=
+
 WORKDIR /app
 
 COPY backend/requirements.txt requirements.txt
@@ -44,6 +54,10 @@ ENV PYTHONPATH=/app \
     HOST=0.0.0.0 \
     PORT=7860 \
     DEBUG=false
+
+# COLMAP's Qt needs XDG_RUNTIME_DIR to initialize the GL context in headless mode.
+RUN mkdir -p /tmp/runtime-root && chmod 777 /tmp/runtime-root
+ENV XDG_RUNTIME_DIR=/tmp/runtime-root
 
 # HF Spaces runs containers as a non-root user; make all writable paths usable.
 RUN mkdir -p /app/data/uploads /app/data/samples /app/jobs \
