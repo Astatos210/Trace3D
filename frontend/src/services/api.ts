@@ -60,11 +60,9 @@ export interface CalibrationResult {
   georeferencing_rmse_meters?: number;
 }
 
-// Deployment modes:
-//  - Same-origin (Docker/SPA/nginx): default, relative paths hit the co-located FastAPI.
-//  - Split hosting (e.g. static frontend on Vercel + backend on a VM/Space): set
-//    VITE_API_BASE at build time to the backend origin, e.g. "https://user-space.hf.space".
-const RAW_API_BASE = (import.meta.env?.VITE_API_BASE as string | undefined)?.trim() || '';
+// Local Vite development uses the proxy in vite.config.ts. Production calls
+// Render directly so uploads do not pass through the Vercel proxy.
+const RAW_API_BASE = import.meta.env.PROD ? 'https://trace3d.onrender.com' : '';
 const API_BASE = `${RAW_API_BASE}/api`;
 
 // Origin serving /jobs and /data artifacts. Same as API origin unless overridden.
