@@ -17,6 +17,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend/ backend/
 COPY pipeline/ pipeline/
+COPY data/samples/ /app/data/samples/
 
 ENV PYTHONPATH=/app
 ENV DEBUG=false
