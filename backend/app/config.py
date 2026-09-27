@@ -24,9 +24,14 @@ class Settings(BaseModel):
     max_upload_bytes: int = int(os.getenv("MAX_UPLOAD_BYTES", str(1024 * 1024 * 1024)))
     max_pending_jobs: int = int(os.getenv("MAX_PENDING_JOBS", "4"))
     job_retention_days: int = int(os.getenv("JOB_RETENTION_DAYS", "7"))
-    allowed_origins: list[str] = os.getenv(
-        "ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
-    ).split(",")
+    allowed_origins: list[str] = [
+        origin.strip()
+        for origin in os.getenv(
+            "ALLOWED_ORIGINS",
+            "https://trace3d.vercel.app",
+        ).split(",")
+        if origin.strip()
+    ]
 
     # Storage paths
     base_dir: Path = BASE_DIR
