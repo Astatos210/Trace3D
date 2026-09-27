@@ -21,6 +21,42 @@ class ColmapExecutionError(RuntimeError):
     pass
 
 
+def _find_offscreen_plugin_path() -> str:
+    """Locate the Qt offscreen platform plugin so Qt can initialize without xcb/X11.
+
+    Returns the directory containing the 'offscreen' plugin, or an empty string
+    if it cannot be found (Qt then relies on its built-in offscreen support).
+    """
+    import glob
+
+    candidates: list[str] = []
+
+    # System Qt (installed as a dependency of colmap on Debian/Ubuntu).
+    for base in ("/usr/lib", "/usr/lib/x86_64-linux-gnu", "/usr/local/lib"):
+        for pat in (
+            f"{base}/qt5/plugins/platforms",
+            f"{base}/qt6/plugins/platforms",
+            f"{base}/Qt5/plugins/platforms",
+            f"{base}/Qt6/plugins/platforms",
+            f"{base}/plugins/platforms",
+        ):
+            if os.path.isdir(pat):
+                candidates.append(pat)
+
+    # Colmap-bundled Qt (Windows-only; harmless to probe on Linux).
+    colmap_exe = shutil.which("colmap") or os.environ.get("COLMAP_EXE_PATH", "")
+    if colmap_exe:
+        colmap_dir = Path(colmap_exe).resolve().parent
+        for depth in ("qt5", "Qt5", "qt6", "Qt6"):
+            candidates.append(str(colmap_dir.parent / depth / "plugins" / "platforms"))
+
+    for cand in candidates:
+        if glob.glob(os.path.join(cand, "libqoffscreen*.so")) or glob.glob(os.path.join(cand, "offscreen*.so")):
+            return cand
+
+    return ""
+
+
 def find_colmap_executable(custom_path: Optional[str] = None) -> Optional[str]:
     """
     Finds the COLMAP executable on the system PATH, from environment variable,
@@ -68,12 +104,31 @@ def run_colmap_command(args: List[str], cwd: Optional[str] = None) -> str:
     """Runs a COLMAP command and captures stdout and stderr."""
     colmap_exe = args[0]
     logger.info(f"Executing COLMAP: {' '.join(args)}")
+
+    # Qt plugin conflict mitigation:
+    # opencv-contrib-python ships its own Qt plugins (for the Qt image format
+    # reader) inside cv2/qml/qt/plugins. COLMAP links against Qt as well.
+    # When both are present, Qt's plugin discovery picks up the xcb plugin
+    # from OpenCV's directory and aborts in headless environments.
+    #
+    # Force the offscreen platform plugin explicitly. We clear/override the
+    # plugin search path so Qt cannot find OpenCV's xcb plugin; combined with
+    # QT_QPA_PLATFORM=offscreen this guarantees COLMAP runs headless.
+    env = os.environ.copy()
+    env["QT_QPA_PLATFORM"] = "offscreen"
+    # Point Qt at the offscreen plugin from the system Qt install (colmap's
+    # dependency) so it cannot see OpenCV's bundled xcb plugin. If the path
+    # does not exist, Qt will fall back to its built-in offscreen support.
+    env["QT_QPA_PLATFORM_PLUGIN_PATH"] = _find_offscreen_plugin_path()
+    env["QT_PLUGIN_PATH"] = ""
+
     process = subprocess.run(
         args,
         cwd=cwd,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        text=True
+        text=True,
+        env=env
     )
     if process.returncode != 0:
         error_msg = f"COLMAP command failed with code {process.returncode}:\n{process.stderr}\n{process.stdout}"
