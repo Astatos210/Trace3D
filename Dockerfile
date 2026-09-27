@@ -1,5 +1,3 @@
-# Single-container build for Hugging Face Spaces (free tier: 2 vCPU, 16 GB RAM).
-# Builds the React frontend, then serves it from FastAPI alongside the full
 # COLMAP + Open3D reconstruction pipeline. One port, one process, zero cost.
 
 # ---- Stage 1: build the React frontend ----
@@ -32,6 +30,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend/ backend/
 COPY pipeline/ pipeline/
+COPY data/samples/ /app/data/samples/
 
 # Compiled SPA -> picked up by backend/app/main.py and served at "/"
 COPY --from=frontend_build /build/dist/ frontend_dist/
