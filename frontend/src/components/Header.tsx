@@ -24,7 +24,7 @@ export const Header: React.FC<HeaderProps> = ({ health, activeMockMode }) => {
           </div>
           <div>
             <h1 style={{ fontSize: '1.25rem', fontWeight: 700, letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              Trace#D
+              Trace3D
               <span className="badge badge-blue">Prototype v0.1</span>
             </h1>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
