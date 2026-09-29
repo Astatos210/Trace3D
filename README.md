@@ -6,7 +6,7 @@ A prototype for turning single-pass aerial drone video into point clouds and mes
 
 ## 🏛️ Monorepo Architecture
 
-> **Free hosting:** See [Hosting on Hugging Face Spaces (Free)](#-hosting-on-hugging-face-spaces-free) below.
+
 
 ---
 
