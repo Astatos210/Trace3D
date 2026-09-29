@@ -134,7 +134,7 @@ Open `http://localhost:3000` in your browser.
 ```bash
 docker-compose up --build
 ```
-This MVP prototype is intended for local demos and competition previews. Configure `ALLOWED_ORIGINS` to the trusted frontend origins when deploying across domains.
+This MVP prototype is intended for local demos and competition previews. The backend allows the hosted Vercel origin by default; set `ALLOWED_ORIGINS` on Render if overriding it.
 
 ---
 
@@ -213,22 +213,21 @@ The whole stack ships as a single container: the React SPA is built at image-bui
 | Vercel / Netlify static only | ❌ Backend impossible | Vercel functions can't run COLMAP (long, stateful, subprocess-heavy) |
 | Oracle Cloud Always Free (x86) | ✅ Real server | 4 ARM/x86 cores, 24 GB RAM, permanent; needs a VPS-style setup (Option 1 in the README) |
 
-### GitHub + Vercel + Hugging Face (split hosting)
+### GitHub + Vercel + Render (split hosting)
 
-You **can** use GitHub + Vercel — for the frontend. The catch: Vercel has no VM, and its serverless functions cannot run COLMAP (multi-minute subprocess pipelines writing to disk). So this hybrid keeps the heavy work on the free HF Space and gets a slick Vercel URL + global CDN for the UI:
+Host the static frontend on Vercel and run the reconstruction API on Render. The frontend defaults to `https://trace3d.onrender.com` for production builds; local Vite development continues to proxy to `localhost:5173`.
 
-1. Deploy the backend once on HF Spaces (steps above) — note your URL, e.g. `https://youruser-trace-d.hf.space`.
+1. The backend is hosted at `https://trace3d.onrender.com`. If `ALLOWED_ORIGINS` is configured in Render, set it to `https://trace3d.vercel.app`.
 2. Push this repo to GitHub.
 3. On [vercel.com](https://vercel.com) → **Add New Project** → import the GitHub repo.
 4. Vercel auto-detects Vite. Set:
    - **Root Directory:** `frontend`
-   - **Environment variable:** `VITE_API_BASE` = `https://youruser-trace-d.hf.space`
-5. Replace the two `YOUR-SPACE.hf.space` placeholders in `vercel.json` with your real Space URL, commit, and deploy.
+5. Deploy. The Vercel rewrites also target the Render API as a same-origin fallback.
 6. Your site is live at `https://your-project.vercel.app`.
 
-How it works: `VITE_API_BASE` is baked into the frontend bundle at build time (`frontend/src/services/api.ts`), so API calls and artifact fetches point at the Space origin. The API has no key prompt; configure `ALLOWED_ORIGINS` for the deployment. Leave `VITE_API_BASE` unset and same-origin Docker/SPA/nginx modes are used.
+How it works: production frontend builds call Render directly, including artifact downloads, so large video uploads bypass Vercel proxy limits. The frontend URL is included in the backend's default allowed origins; set `ALLOWED_ORIGINS` in Render to the value above if that environment variable is already configured there. Vite local development proxies API calls, so it does not need CORS.
 
-Caveats: the Space's ephemeral-disk and sleep caveats still apply; and Vercel's free proxy has a 60s edge timeout, plenty for API polling but short for an upload-plus-start round trip — large videos should be uploaded directly from the browser to the backend URL if that ever bites.
+Render's storage and instance behavior depend on the service plan. Job files are stored on the backend instance, so configure persistent storage if completed reconstructions must survive redeploys or restarts.
 
 ## ⚖️ Project Standards & Disclaimer
 - **No Fabricated Outputs**: All metrics, point counts, and processing times reflect actual computation. If COLMAP is not detected, normal mode raises an explicit error and only the clearly tagged Mock Mode displays demo geometry.
